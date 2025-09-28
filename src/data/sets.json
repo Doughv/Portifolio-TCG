@@ -1,0 +1,920 @@
+[
+  {
+    "id": "base1",
+    "name": "Coleção Básica",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 102,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "base2",
+    "name": "Selva",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 64,
+    "symbol": "https://assets.tcgdex.net/univ/base/base2/symbol",
+    "logo": ""
+  },
+  {
+    "id": "base3",
+    "name": "Fóssil",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 62,
+    "symbol": "https://assets.tcgdex.net/univ/base/base3/symbol",
+    "logo": ""
+  },
+  {
+    "id": "ex1",
+    "name": "EX Rubi e Safira",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 109,
+    "symbol": "https://assets.tcgdex.net/univ/ex/ex1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "ex7",
+    "name": "EX O Retorno da Equipe Rocket ",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 109,
+    "symbol": "https://assets.tcgdex.net/univ/ex/ex7/symbol",
+    "logo": ""
+  },
+  {
+    "id": "ex8",
+    "name": "EX Deoxys",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 107,
+    "symbol": "https://assets.tcgdex.net/univ/ex/ex8/symbol",
+    "logo": ""
+  },
+  {
+    "id": "ex9",
+    "name": "EX Esmeralda",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 106,
+    "symbol": "https://assets.tcgdex.net/univ/ex/ex9/symbol",
+    "logo": ""
+  },
+  {
+    "id": "ex10",
+    "name": "EX Forças Ocultas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 115,
+    "symbol": "https://assets.tcgdex.net/univ/ex/ex10/symbol",
+    "logo": ""
+  },
+  {
+    "id": "dp1",
+    "name": "Diamante & Pérola",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 130,
+    "symbol": "https://assets.tcgdex.net/univ/dp/dp1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "dp2",
+    "name": "Tesouros Misteriosos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 122,
+    "symbol": "https://assets.tcgdex.net/univ/dp/dp2/symbol",
+    "logo": ""
+  },
+  {
+    "id": "dp3",
+    "name": "Maravilhas Secretas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 132,
+    "symbol": "https://assets.tcgdex.net/univ/dp/dp3/symbol",
+    "logo": ""
+  },
+  {
+    "id": "hgss1",
+    "name": "HeartGold SoulSilver",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 123,
+    "symbol": "https://assets.tcgdex.net/univ/hgss/hgss1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "hgss2",
+    "name": "Revelado",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 95,
+    "symbol": "https://assets.tcgdex.net/univ/hgss/hgss2/symbol",
+    "logo": ""
+  },
+  {
+    "id": "hgss3",
+    "name": "Destemido",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 90,
+    "symbol": "https://assets.tcgdex.net/univ/hgss/hgss3/symbol",
+    "logo": ""
+  },
+  {
+    "id": "hgss4",
+    "name": "Triunfante",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 102,
+    "symbol": "https://assets.tcgdex.net/univ/hgss/hgss4/symbol",
+    "logo": ""
+  },
+  {
+    "id": "col1",
+    "name": "Chamado das Lendas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 95,
+    "symbol": "https://assets.tcgdex.net/univ/col/col1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw1",
+    "name": "Black & White",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 115,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw2",
+    "name": "Poderes Emergentes",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 98,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw2/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw3",
+    "name": "Vitórias Nobres",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 102,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw3/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw4",
+    "name": "Próximos Destinos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 103,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw4/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw5",
+    "name": "Exploradores da Escuridão",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 111,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw5/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw6",
+    "name": "Dragões Enaltecidos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 128,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw6/symbol",
+    "logo": ""
+  },
+  {
+    "id": "dv1",
+    "name": "Cofre do Dragão",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 20,
+    "symbol": "https://assets.tcgdex.net/univ/bw/dv1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw7",
+    "name": "Fronteiras Cruzadas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 153,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw7/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw8",
+    "name": "Tempestade de Plasma",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 138,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw8/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw9",
+    "name": "Congelamento de Plasma",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 122,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw9/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw10",
+    "name": "Explosão de Plasma",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 105,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw10/symbol",
+    "logo": ""
+  },
+  {
+    "id": "bw11",
+    "name": "Tesouros Lendários",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 113,
+    "symbol": "https://assets.tcgdex.net/univ/bw/bw11/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy0",
+    "name": "Conjunto para Iniciantes Kalos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 39,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy0/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy1",
+    "name": "XY",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 146,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy2",
+    "name": "Flash de Fogo",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 110,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy2/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy3",
+    "name": "Punhos Furiosos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 114,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy3/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy4",
+    "name": "Força Fantasma",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 124,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy4/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy5",
+    "name": "Conflito Primitivo",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 164,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy5/symbol",
+    "logo": ""
+  },
+  {
+    "id": "dc1",
+    "name": "Crise Dupla",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 34,
+    "symbol": "https://assets.tcgdex.net/univ/xy/dc1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy6",
+    "name": "Céus Estrondosos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 112,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy6/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy7",
+    "name": "Origens Ancestrais",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 101,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy7/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy8",
+    "name": "Turbo Revolução",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 165,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy8/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy9",
+    "name": "Turbo Colisão",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 126,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy9/symbol",
+    "logo": ""
+  },
+  {
+    "id": "g1",
+    "name": "Gerações",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 83,
+    "symbol": "https://assets.tcgdex.net/univ/xy/g1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy10",
+    "name": "Fusão de Destinos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 129,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy10/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy11",
+    "name": "Cerco de Vapor",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 116,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy11/symbol",
+    "logo": ""
+  },
+  {
+    "id": "xy12",
+    "name": "Evoluções",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 113,
+    "symbol": "https://assets.tcgdex.net/univ/xy/xy12/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm1",
+    "name": "Sol e Lua",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 163,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm2",
+    "name": "Guardiões Ascendentes",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 169,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm2/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm3",
+    "name": "Sombras Ardentes",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 169,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm3/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm3.5",
+    "name": "Lendas Luminescentes",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 78,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sm4",
+    "name": "Invasão Carmim",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 124,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm4/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm5",
+    "name": "Ultra Prisma",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 173,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm5/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm6",
+    "name": "Luz Proibida",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 146,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm6/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm7",
+    "name": "Tempestade Celestial",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 183,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm7/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm7.5",
+    "name": "Dragões Soberanos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 78,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sm8",
+    "name": "Trovões Perdidos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 236,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm8/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm9",
+    "name": "União de Aliados",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 196,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm9/symbol",
+    "logo": ""
+  },
+  {
+    "id": "det1",
+    "name": "Detetive Pikachu",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 18,
+    "symbol": "https://assets.tcgdex.net/univ/sm/det1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm10",
+    "name": "Elos Inquebráveis",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 234,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm10/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm11",
+    "name": "Sintonia Mental ",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 258,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm11/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm115",
+    "name": "Destinos Ocultos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 68,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm115/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sm12",
+    "name": "Eclipse Cósmico",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 271,
+    "symbol": "https://assets.tcgdex.net/univ/sm/sm12/symbol",
+    "logo": ""
+  },
+  {
+    "id": "swshp",
+    "name": "ESES Promos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 286,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swshp/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swshp/logo"
+  },
+  {
+    "id": "swsh1",
+    "name": "Espada e Escudo",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 216,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh1/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh1/logo"
+  },
+  {
+    "id": "swsh2",
+    "name": "Rixa Rebelde",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 209,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh2/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh2/logo"
+  },
+  {
+    "id": "swsh3",
+    "name": "Escuridão Incandescente",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 201,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh3/logo"
+  },
+  {
+    "id": "swsh3.5",
+    "name": "Caminho do Campeão",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 80,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh3.5/logo"
+  },
+  {
+    "id": "swsh4",
+    "name": "Voltagem Vívida",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 203,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh4/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh4/logo"
+  },
+  {
+    "id": "swsh4.5",
+    "name": "Destinos Brilhantes ",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 195,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh4.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh4.5/logo"
+  },
+  {
+    "id": "swsh5",
+    "name": "Estilos de Batalha",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 183,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh5/logo"
+  },
+  {
+    "id": "swsh6",
+    "name": "Reinado Arrepiante",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 233,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh6/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh6/logo"
+  },
+  {
+    "id": "swsh7",
+    "name": "Céus em Evolução",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 237,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh7/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh7/logo"
+  },
+  {
+    "id": "cel25",
+    "name": "Celebrações",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 25,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/cel25/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/cel25/logo"
+  },
+  {
+    "id": "swsh8",
+    "name": "Golpe Fusão",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 284,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh8/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh8/logo"
+  },
+  {
+    "id": "swsh9",
+    "name": "Astros Cintilantes",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 216,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh9/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh9/logo"
+  },
+  {
+    "id": "swsh10",
+    "name": "Estrelas Radiantes",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 246,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh10/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh10/logo"
+  },
+  {
+    "id": "swsh10.5",
+    "name": "Pokémon GO",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 88,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh10.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh10.5/logo"
+  },
+  {
+    "id": "swsh11",
+    "name": "Origem Perdida",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 247,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh11/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh11/logo"
+  },
+  {
+    "id": "swsh12",
+    "name": "Tempestade Prateada",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 245,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh12/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh12/logo"
+  },
+  {
+    "id": "swsh12.5",
+    "name": "Realeza Absoluta",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 230,
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh12.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh12.5/logo"
+  },
+  {
+    "id": "svp",
+    "name": "SVP Black Star Promos",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 195,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sv01",
+    "name": "Escarlate e Violeta",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 258,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv01/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv01/logo"
+  },
+  {
+    "id": "sv02",
+    "name": "Evoluções em Paldea",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 279,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv02/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv02/logo"
+  },
+  {
+    "id": "sv03",
+    "name": "Obsidiana em Chamas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 230,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv03/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv03/logo"
+  },
+  {
+    "id": "sv03.5",
+    "name": "151",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 207,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv03.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv03.5/logo"
+  },
+  {
+    "id": "sv04",
+    "name": "Fenda Paradoxal",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 266,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv04/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv04/logo"
+  },
+  {
+    "id": "sv04.5",
+    "name": "Destinos de Paldea",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 245,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv04.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv04.5/logo"
+  },
+  {
+    "id": "sv05",
+    "name": "Forças Temporais",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 218,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv05/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv05/logo"
+  },
+  {
+    "id": "sv06",
+    "name": "Máscaras do Crepúsculo",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 226,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv06/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv06/logo"
+  },
+  {
+    "id": "sv06.5",
+    "name": "Fábulas Nebulosas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 99,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv06.5/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv06.5/logo"
+  },
+  {
+    "id": "sv07",
+    "name": "Coroa Estelar",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 175,
+    "symbol": "",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv07/logo"
+  },
+  {
+    "id": "A1",
+    "name": "Dominação Genética",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 226,
+    "symbol": "https://assets.tcgdex.net/univ/tcgp/A1/symbol",
+    "logo": ""
+  },
+  {
+    "id": "P-A",
+    "name": "Promo-A",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 0,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sv08",
+    "name": "Fagulhas Impetudsas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 252,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "A1a",
+    "name": "Ilha Mítica",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 68,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sv08.5",
+    "name": "Evoluções Prismáticas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 180,
+    "symbol": "",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv08.5/logo"
+  },
+  {
+    "id": "A2",
+    "name": "Embate do Tempo e Espaço",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 140,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "A2a",
+    "name": "Luz Triunfante",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 75,
+    "symbol": "https://assets.tcgdex.net/univ/tcgp/A2a/symbol",
+    "logo": ""
+  },
+  {
+    "id": "A2b",
+    "name": "Festival Brilhante",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 72,
+    "symbol": "https://assets.tcgdex.net/univ/tcgp/A2b/symbol",
+    "logo": ""
+  },
+  {
+    "id": "sv09",
+    "name": "Amigos de Jornada",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 190,
+    "symbol": "https://assets.tcgdex.net/univ/sv/sv09/symbol",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv09/logo"
+  },
+  {
+    "id": "A3",
+    "name": "Guardiões Celestiais",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 155,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sv10",
+    "name": "Rivais Predestinados",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 244,
+    "symbol": "",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv10/logo"
+  },
+  {
+    "id": "sv10.5b",
+    "name": "Raio Preto",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 172,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "sv10.5w",
+    "name": "Fogo Branco",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 173,
+    "symbol": "",
+    "logo": ""
+  },
+  {
+    "id": "A4a",
+    "name": "Nascentes Reclusas",
+    "series": "base",
+    "releaseDate": "2025-09-28T00:06:28.741Z",
+    "totalCards": 71,
+    "symbol": "https://assets.tcgdex.net/univ/tcgp/A4a/symbol",
+    "logo": ""
+  }
+]

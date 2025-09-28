@@ -1,0 +1,48 @@
+[
+  {
+    "id": "base",
+    "name": "Coleção Básica"
+  },
+  {
+    "id": "ex",
+    "name": "EX"
+  },
+  {
+    "id": "dp",
+    "name": "Diamante & Pérola"
+  },
+  {
+    "id": "hgss",
+    "name": "HeartGold SoulSilver"
+  },
+  {
+    "id": "col",
+    "name": "Chamado das Lendas"
+  },
+  {
+    "id": "bw",
+    "name": "Black & White"
+  },
+  {
+    "id": "xy",
+    "name": "XY"
+  },
+  {
+    "id": "sm",
+    "name": "Sol e Lua"
+  },
+  {
+    "id": "swsh",
+    "name": "Espada e Escudo",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh1/logo"
+  },
+  {
+    "id": "sv",
+    "name": "Escarlate e Violeta",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv01/logo"
+  },
+  {
+    "id": "tcgp",
+    "name": "Pokémon Estampas Ilustradas Pocket"
+  }
+]

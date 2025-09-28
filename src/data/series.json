@@ -1,0 +1,68 @@
+[
+  {
+    "id": "base",
+    "name": "Coleção Básica",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.739Z"
+  },
+  {
+    "id": "ex",
+    "name": "EX",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "dp",
+    "name": "Diamante & Pérola",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "hgss",
+    "name": "HeartGold SoulSilver",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "col",
+    "name": "Chamado das Lendas",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "bw",
+    "name": "Black & White",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "xy",
+    "name": "XY",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "sm",
+    "name": "Sol e Lua",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "swsh",
+    "name": "Espada e Escudo",
+    "logo": "https://assets.tcgdex.net/pt/swsh/swsh1/logo",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "sv",
+    "name": "Escarlate e Violeta",
+    "logo": "https://assets.tcgdex.net/pt/sv/sv01/logo",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  },
+  {
+    "id": "tcgp",
+    "name": "Pokémon Estampas Ilustradas Pocket",
+    "logo": "",
+    "releaseDate": "2025-09-28T00:06:28.740Z"
+  }
+]
