@@ -8,7 +8,11 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "populate-db": "node scripts/populate-database.js",
-    "build-with-data": "npm run populate-db && expo build"
+    "build-with-data": "npm run populate-db && expo build",
+    "build-preview": "npx eas build --platform android --profile preview",
+    "build-dev": "npx eas build --platform android --profile development",
+    "build-production": "npx eas build --platform android --profile production",
+    "commit-and-build": "git add . && git commit -m \"Build update\" && npm run build-preview"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -18,6 +22,7 @@
     "axios": "^1.12.2",
     "expo": "~54.0.10",
     "expo-background-fetch": "~14.0.7",
+    "expo-dev-client": "~6.0.12",
     "expo-file-system": "~19.0.15",
     "expo-sqlite": "~16.0.8",
     "expo-status-bar": "~3.0.8",

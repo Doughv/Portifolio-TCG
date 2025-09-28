@@ -5,6 +5,35 @@ const API_BASE_URL = 'https://api.pokemontcg.io/v2';
 
 class SyncService {
   private apiKey: string = ''; // Adicione sua API key aqui se necessário
+  private axiosConfig = {
+    timeout: 30000, // 30 segundos
+    retries: 3,
+    retryDelay: 1000
+  };
+
+  // Método para fazer requisições com retry
+  private async makeRequest(url: string, params?: any): Promise<any> {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= this.axiosConfig.retries; attempt++) {
+      try {
+        const response = await axios.get(url, {
+          params,
+          timeout: this.axiosConfig.timeout
+        });
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.log(`Tentativa ${attempt}/${this.axiosConfig.retries} falhou para ${url}`);
+        
+        if (attempt < this.axiosConfig.retries) {
+          await new Promise(resolve => setTimeout(resolve, this.axiosConfig.retryDelay * attempt));
+        }
+      }
+    }
+    
+    throw lastError;
+  }
 
   async syncAllData(): Promise<void> {
     try {
@@ -30,11 +59,9 @@ class SyncService {
     try {
       console.log('Syncing series...');
       
-      const response = await axios.get(`${API_BASE_URL}/sets`, {
-        params: {
-          pageSize: 250, // Máximo permitido
-          orderBy: 'releaseDate'
-        }
+      const response = await this.makeRequest(`${API_BASE_URL}/sets`, {
+        pageSize: 250, // Máximo permitido
+        orderBy: 'releaseDate'
       });
 
       // Agrupar sets por série

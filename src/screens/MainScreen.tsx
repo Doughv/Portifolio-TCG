@@ -60,7 +60,7 @@ export default function MainScreen() {
   };
 
   const handleSettingsPress = () => {
-    navigation.navigate('Settings');
+    navigation.navigate('LanguageConfig', { language: currentLanguage });
   };
 
   return (
