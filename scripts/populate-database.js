@@ -4,6 +4,34 @@ const path = require('path');
 // Script para popular o banco de dados com os JSONs antes do build
 console.log('🚀 Iniciando população do banco de dados...');
 
+// Função para inferir série baseada no ID do set
+function inferSeriesFromId(setId) {
+  // Séries principais
+  if (setId.startsWith('base')) return 'base';
+  if (setId.startsWith('ex')) return 'ex';
+  if (setId.startsWith('dp')) return 'dp';
+  if (setId.startsWith('pl')) return 'pl';
+  if (setId.startsWith('hgss')) return 'hgss';
+  if (setId.startsWith('bw')) return 'bw';
+  if (setId.startsWith('xy')) return 'xy';
+  if (setId.startsWith('sm')) return 'sm';
+  if (setId.startsWith('swsh')) return 'swsh';
+  if (setId.startsWith('sv')) return 'sv';
+  
+  // Sets especiais - inferir baseado no contexto
+  if (setId.startsWith('col')) return 'col';  // Chamado das Lendas
+  if (setId.startsWith('dv')) return 'bw';   // Cofre do Dragão (Black & White)
+  if (setId.startsWith('dc')) return 'base'; // Desafio dos Campeões (Base)
+  if (setId.startsWith('g')) return 'base';  // Gym (Base)
+  if (setId.startsWith('det')) return 'sm';  // Detective Pikachu (Sol e Lua)
+  if (setId.startsWith('cel')) return 'sm';  // Celestial Storm (Sol e Lua)
+  if (setId.startsWith('A')) return 'tcgp';  // Sets especiais (Pokémon Estampas Ilustradas Pocket)
+  if (setId.startsWith('P-')) return 'base'; // Sets promocionais (Base)
+  
+  console.warn(`⚠️ Não foi possível inferir série para o set ${setId}, usando 'base' como padrão`);
+  return 'base';
+}
+
 // Caminhos dos arquivos
 const assetsPath = path.join(__dirname, '../assets/data');
 const outputPath = path.join(__dirname, '../src/data');
@@ -53,7 +81,7 @@ function processSetsData() {
     const processedSets = setsData.map(item => ({
       id: item.id,
       name: item.name,
-      series: item.series || 'base', // Default para base se não tiver
+      series: item.series || inferSeriesFromId(item.id), // Inferir série do ID
       releaseDate: item.releaseDate || new Date().toISOString(),
       totalCards: item.cardCount?.total || item.cardCount?.official || 0,
       symbol: item.symbol || '',
@@ -78,21 +106,44 @@ function processCardsData() {
   try {
     const cardsData = JSON.parse(fs.readFileSync(path.join(assetsPath, 'pokemon_cards_detailed.json'), 'utf8'));
     
-    const processedCards = cardsData.map(item => ({
-      id: item.id,
-      name: item.name,
-      image: item.image || item.images?.large || item.images?.small || '',
-      rarity: item.rarity || 'Unknown',
-      set: item.set?.id || 'Unknown',
-      series: item.set?.series || 'Unknown',
-      price: extractPrice(item.cardmarket?.prices),
-      hp: extractHP(item.hp),
-      types: extractTypes(item.types),
-      attacks: extractAttacks(item.attacks),
-      weaknesses: extractWeaknesses(item.weaknesses),
-      resistances: extractResistances(item.resistances),
-      lastUpdated: new Date().toISOString()
-    }));
+    const processedCards = cardsData.map(item => {
+      // Inferir set e série baseado no ID do card
+      // bw1-1 → set "bw1" → série "bw"
+      // base1-1 → set "base1" → série "base"
+      let setId = item.set?.id || 'Unknown';
+      let seriesId = item.set?.series || 'Unknown';
+      
+      // Se não tem set definido, tentar inferir do ID do card
+      if (setId === 'Unknown' && item.id) {
+        // bw1-1 → bw1
+        // base1-1 → base1
+        const parts = item.id.split('-');
+        if (parts.length >= 2) {
+          setId = parts[0]; // bw1, base1, etc.
+        }
+      }
+      
+      // Se não tem série definida, inferir do set
+      if (seriesId === 'Unknown' && setId !== 'Unknown') {
+        seriesId = inferSeriesFromId(setId);
+      }
+      
+      return {
+        id: item.id,
+        name: item.name,
+        image: item.image || item.images?.large || item.images?.small || '',
+        rarity: item.rarity || 'Unknown',
+        set: setId,
+        series: seriesId,
+        price: extractPrice(item.cardmarket?.prices),
+        hp: extractHP(item.hp),
+        types: extractTypes(item.types),
+        attacks: extractAttacks(item.attacks),
+        weaknesses: extractWeaknesses(item.weaknesses),
+        resistances: extractResistances(item.resistances),
+        lastUpdated: new Date().toISOString()
+      };
+    });
 
     // Salvar arquivo único de cards (mais simples para React Native)
     fs.writeFileSync(

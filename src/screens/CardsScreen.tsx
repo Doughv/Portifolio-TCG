@@ -10,6 +10,9 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DatabaseService, { PokemonCard } from '../services/DatabaseService';
+import FilterService from '../services/FilterService';
+import TCGdexService from '../services/TCGdexService';
+import ImageDownloadService from '../services/ImageDownloadService';
 
 export default function CardsScreen() {
   const navigation = useNavigation();
@@ -18,6 +21,9 @@ export default function CardsScreen() {
   
   const [cards, setCards] = useState<PokemonCard[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [downloadingImages, setDownloadingImages] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   useEffect(() => {
     loadCards();
@@ -25,10 +31,58 @@ export default function CardsScreen() {
 
   const loadCards = async () => {
     try {
-      const cardsData = await DatabaseService.getCardsBySet(setId);
+      setLoading(true);
+      console.log(`Carregando cards filtrados do set ${setId} do banco de dados...`);
+      const cardsData = await FilterService.getFilteredCardsBySet(setId);
+      
+      // Se não há cards no banco, tentar buscar da API
+      if (cardsData.length === 0) {
+        console.log('Nenhum card encontrado no banco, buscando da API...');
+        try {
+          const apiCards = await TCGdexService.getCardsBySet(setId);
+          if (apiCards.length > 0) {
+            console.log(`${apiCards.length} cards encontrados na API`);
+            setCards(apiCards);
+            return;
+          }
+        } catch (apiError) {
+          console.error('Erro ao buscar cards da API:', apiError);
+        }
+      }
+      
       setCards(cardsData);
+      console.log(`${cardsData.length} cards carregados (com filtros aplicados)`);
     } catch (error) {
-      console.error('Error loading cards:', error);
+      console.error('Error loading filtered cards:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadImages = async () => {
+    try {
+      setDownloadingImages(true);
+      setDownloadProgress(0);
+      
+      console.log(`Iniciando download de imagens para ${cards.length} cards...`);
+      
+      await ImageDownloadService.downloadSetImages(
+        setId, 
+        cards, 
+        (progress, currentCard) => {
+          setDownloadProgress(progress);
+          console.log(`Progresso: ${progress.toFixed(1)}% - ${currentCard}`);
+        }
+      );
+      
+      console.log('Download de imagens concluído!');
+      Alert.alert('Sucesso', 'Imagens baixadas com sucesso!');
+    } catch (error) {
+      console.error('Erro no download de imagens:', error);
+      Alert.alert('Erro', 'Não foi possível baixar as imagens');
+    } finally {
+      setDownloadingImages(false);
+      setDownloadProgress(0);
     }
   };
 

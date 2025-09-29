@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import DatabaseService, { PokemonSeries } from '../services/DatabaseService';
+import FilterService from '../services/FilterService';
 
 export default function SeriesScreen() {
   const navigation = useNavigation();
@@ -19,10 +20,12 @@ export default function SeriesScreen() {
 
   const loadSeries = async () => {
     try {
-      const seriesData = await DatabaseService.getAllSeries();
+      console.log('Carregando séries filtradas do banco de dados...');
+      const seriesData = await FilterService.getFilteredSeries();
       setSeries(seriesData);
+      console.log(`${seriesData.length} séries carregadas (com filtros aplicados)`);
     } catch (error) {
-      console.error('Error loading series:', error);
+      console.error('Error loading filtered series:', error);
     }
   };
 

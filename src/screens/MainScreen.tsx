@@ -9,6 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import TCGdexService from '../services/TCGdexService';
+import FilterService from '../services/FilterService';
 
 type RootStackParamList = {
   Main: undefined;
@@ -40,6 +42,12 @@ export default function MainScreen() {
 
   const handleLanguageConfigPress = async (language: string) => {
     try {
+      // Atualizar idioma no serviço
+      await TCGdexService.setLanguage(language);
+      
+      // Recarregar filtros para o novo idioma
+      await FilterService.loadSettings(language);
+      
       // Salvar idioma selecionado
       await AsyncStorage.setItem('selectedLanguage', language);
       
@@ -65,32 +73,14 @@ export default function MainScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header com botões de idioma */}
+      {/* Header simples */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.languageButton, currentLanguage === 'pt' && styles.activeLanguageButton]}
-          onPress={() => handleLanguageConfigPress('pt')}
-        >
-          <Text style={[styles.languageButtonText, currentLanguage === 'pt' && styles.activeLanguageButtonText]}>
-            TCG BR
-          </Text>
-        </TouchableOpacity>
-        
-        <View style={styles.separator} />
-        
-        <TouchableOpacity 
-          style={[styles.languageButton, currentLanguage === 'en' && styles.activeLanguageButton]}
-          onPress={() => handleLanguageConfigPress('en')}
-        >
-          <Text style={[styles.languageButtonText, currentLanguage === 'en' && styles.activeLanguageButtonText]}>
-            EN TCG
-          </Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Pokémon TCG</Text>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.title}>Pokémon TCG V2</Text>
-        <Text style={styles.subtitle}>Seu guia completo para cartas Pokémon</Text>
+        <Text style={styles.title}>Pokémon TCG V2 🔥</Text>
+        <Text style={styles.subtitle}>Seu guia completo para cartas Pokémon - HOT RELOAD FUNCIONANDO!</Text>
         
         <TouchableOpacity 
           style={styles.collectionsButton}
@@ -126,7 +116,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -136,29 +125,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  languageButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    marginHorizontal: 5,
-  },
-  activeLanguageButton: {
-    backgroundColor: '#007AFF',
-  },
-  languageButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  activeLanguageButtonText: {
-    color: '#fff',
-  },
-  separator: {
-    width: 1,
-    height: 20,
-    backgroundColor: '#ccc',
-    marginHorizontal: 10,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
   },
   content: {
     flex: 1,

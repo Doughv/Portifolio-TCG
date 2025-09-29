@@ -139,7 +139,7 @@ class DatabaseService {
       'SELECT * FROM series ORDER BY name ASC'
     );
     
-    return result.map(row => ({
+    return result.map((row: any) => ({
       id: row.id as string,
       name: row.name as string,
       logo: row.logo as string,
@@ -165,7 +165,7 @@ class DatabaseService {
       [seriesId]
     );
     
-    return result.map(row => ({
+    return result.map((row: any) => ({
       id: row.id as string,
       name: row.name as string,
       series: row.series_id as string,
@@ -193,7 +193,7 @@ class DatabaseService {
         card.set,
         card.series,
         card.price,
-        card.hp,
+        card.hp || null,
         JSON.stringify(card.types || []),
         JSON.stringify(card.attacks || []),
         JSON.stringify(card.weaknesses || []),
@@ -211,7 +211,7 @@ class DatabaseService {
       [setId]
     );
     
-    return result.map(row => ({
+    return result.map((row: any) => ({
       id: row.id as string,
       name: row.name as string,
       image: row.image as string,
@@ -236,7 +236,7 @@ class DatabaseService {
       [`%${query}%`]
     );
     
-    return result.map(row => ({
+    return result.map((row: any) => ({
       id: row.id as string,
       name: row.name as string,
       image: row.image as string,
@@ -273,7 +273,80 @@ class DatabaseService {
       [lastCheck]
     );
     
-    return (result?.count as number) > 0;
+    return ((result as any)?.count as number) > 0;
+  }
+
+  // Método para obter todas as séries (já existe, apenas renomear para consistência)
+  // getAllSeries() já existe acima, então não precisamos redefinir
+
+  // Método para obter todos os sets
+  async getAllSets(): Promise<PokemonSet[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const result = await this.db.getAllAsync(
+      'SELECT * FROM sets ORDER BY release_date DESC'
+    );
+    
+    return result.map((row: any) => ({
+      id: row.id as string,
+      name: row.name as string,
+      series: row.series_id as string,
+      releaseDate: row.release_date as string,
+      totalCards: row.total_cards as number,
+      symbol: row.symbol as string,
+      logo: row.logo as string
+    }));
+  }
+
+  // Método para obter todos os cards
+  async getAllCards(): Promise<PokemonCard[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const result = await this.db.getAllAsync(
+      'SELECT * FROM cards ORDER BY name ASC'
+    );
+    
+    return result.map((row: any) => ({
+      id: row.id as string,
+      name: row.name as string,
+      image: row.image as string,
+      rarity: row.rarity as string,
+      set: row.set_id as string,
+      series: row.series_id as string,
+      price: row.price as number,
+      lastUpdated: row.last_updated as string,
+      hp: row.hp as number,
+      types: JSON.parse(row.types as string || '[]'),
+      attacks: JSON.parse(row.attacks as string || '[]'),
+      weaknesses: JSON.parse(row.weaknesses as string || '[]'),
+      resistances: JSON.parse(row.resistances as string || '[]')
+    }));
+  }
+
+  // Método para obter estatísticas
+  async getStats(): Promise<{ series: number; sets: number; cards: number }> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const seriesResult = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM series');
+    const setsResult = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM sets');
+    const cardsResult = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM cards');
+    
+    return {
+      series: (seriesResult as any)?.count as number || 0,
+      sets: (setsResult as any)?.count as number || 0,
+      cards: (cardsResult as any)?.count as number || 0
+    };
+  }
+
+  // Método para limpar todos os dados
+  async clearAllData(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    await this.db.execAsync('DELETE FROM cards');
+    await this.db.execAsync('DELETE FROM sets');
+    await this.db.execAsync('DELETE FROM series');
+    
+    console.log('Todos os dados foram limpos do banco');
   }
 
   async close(): Promise<void> {

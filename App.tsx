@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
 import MainScreen from './src/screens/MainScreen';
@@ -11,10 +12,14 @@ import SeriesScreen from './src/screens/SeriesScreen';
 import SetsScreen from './src/screens/SetsScreen';
 import CardsScreen from './src/screens/CardsScreen';
 import CardDetailScreen from './src/screens/CardDetailScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import DownloadsScreen from './src/screens/DownloadsScreen';
 
 // Services
 import DatabaseService from './src/services/DatabaseService';
-import SyncService from './src/services/SyncService';
+import TCGdexService from './src/services/TCGdexService';
+import OptimizedStorageService from './src/services/OptimizedStorageService';
+import FilterService from './src/services/FilterService';
 
 const Stack = createStackNavigator();
 
@@ -34,8 +39,24 @@ export default function App() {
       await DatabaseService.initialize();
       console.log('Database initialized');
       
-      // 2. NÃO sincronizar automaticamente - deixar para o usuário decidir
-      console.log('App ready - user can sync when needed');
+      // 2. Configurar idioma fixo em português
+      await TCGdexService.setLanguage('pt');
+      await FilterService.loadSettings('pt');
+      console.log('App configurado para português brasileiro');
+      
+      // 3. Verificar se há dados no banco, se não, migrar dos JSONs
+      const stats = await DatabaseService.getStats();
+      if (stats.series === 0 && stats.sets === 0 && stats.cards === 0) {
+        console.log('No data in database, migrating from JSONs...');
+        const migrationResult = await TCGdexService.migrateFromJSONs();
+        if (migrationResult.success) {
+          console.log('Migration successful:', migrationResult.message);
+        } else {
+          console.error('Migration failed:', migrationResult.message);
+        }
+      } else {
+        console.log('Data already exists in database:', stats);
+      }
       
       setIsInitialized(true);
     } catch (error) {
@@ -108,6 +129,16 @@ export default function App() {
           name="CardDetail" 
           component={CardDetailScreen}
           options={{ title: 'Detalhes do Card' }}
+        />
+        <Stack.Screen 
+          name="Settings" 
+          component={SettingsScreen}
+          options={{ title: 'Configurações' }}
+        />
+        <Stack.Screen 
+          name="Downloads" 
+          component={DownloadsScreen}
+          options={{ title: 'Downloads' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
