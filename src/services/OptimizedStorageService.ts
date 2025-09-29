@@ -33,7 +33,7 @@ class OptimizedStorageService {
               id: set.id,
               name: set.name,
               series: set.serie || set.series,
-              releaseDate: set.releaseDate || set.release || set.date || new Date().toISOString(),
+              releaseDate: set.releaseDate || set.release || set.date || null,
               totalCards: set.cardCount?.total || set.cardCount?.official || 0,
               symbol: set.symbol || '',
               logo: set.logo || ''

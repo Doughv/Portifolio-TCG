@@ -35,6 +35,18 @@ function inferSeriesFromId(setId) {
 // Caminhos dos arquivos
 const assetsPath = path.join(__dirname, '../assets/data');
 const outputPath = path.join(__dirname, '../src/data');
+const tempPath = '/tmp/pokemon_api_data';
+
+// Verificar se há dados temporários da API
+function getDataPath() {
+  if (fs.existsSync(tempPath)) {
+    console.log('🔄 Usando dados temporários da API...');
+    return tempPath;
+  } else {
+    console.log('📁 Usando dados locais...');
+    return assetsPath;
+  }
+}
 
 // Verificar se a pasta assets/data existe
 if (!fs.existsSync(assetsPath)) {
@@ -50,7 +62,8 @@ if (!fs.existsSync(outputPath)) {
 // Função para processar séries
 function processSeriesData() {
   try {
-    const seriesData = JSON.parse(fs.readFileSync(path.join(assetsPath, 'pokemon_series.json'), 'utf8'));
+    const dataPath = getDataPath();
+    const seriesData = JSON.parse(fs.readFileSync(path.join(dataPath, 'pokemon_series.json'), 'utf8'));
     
     // Processar séries diretamente do arquivo
     const processedSeries = seriesData.map(series => ({
@@ -76,7 +89,8 @@ function processSeriesData() {
 // Função para processar sets
 function processSetsData() {
   try {
-    const setsData = JSON.parse(fs.readFileSync(path.join(assetsPath, 'pokemon_sets.json'), 'utf8'));
+    const dataPath = getDataPath();
+    const setsData = JSON.parse(fs.readFileSync(path.join(dataPath, 'pokemon_sets.json'), 'utf8'));
     
     const processedSets = setsData.map(item => ({
       id: item.id,
@@ -104,7 +118,8 @@ function processSetsData() {
 // Função para processar cards
 function processCardsData() {
   try {
-    const cardsData = JSON.parse(fs.readFileSync(path.join(assetsPath, 'pokemon_cards_detailed.json'), 'utf8'));
+    const dataPath = getDataPath();
+    const cardsData = JSON.parse(fs.readFileSync(path.join(dataPath, 'pokemon_cards_detailed.json'), 'utf8'));
     
     const processedCards = cardsData.map(item => {
       // Inferir set e série baseado no ID do card

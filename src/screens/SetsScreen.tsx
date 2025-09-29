@@ -103,12 +103,12 @@ export default function SetsScreen() {
 
   const renderSetItem = ({ item }: { item: PokemonSet }) => (
     <TouchableOpacity
-      style={styles.setCard}
+      style={styles.setItem}
       onPress={() => handleSetPress(item.id)}
     >
       <Text style={styles.setName}>{item.name}</Text>
       <Text style={styles.setInfo}>
-        {item.totalCards} cards • {new Date(item.releaseDate).getFullYear()}
+        {item.totalCards} cards
       </Text>
     </TouchableOpacity>
   );
@@ -126,9 +126,9 @@ export default function SetsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Sets</Text>
+          <Text style={styles.title}>Expansões</Text>
           <Text style={styles.subtitle}>
-            {sets.length} sets disponíveis
+            {sets.length} expansões disponíveis
           </Text>
         </View>
         <TouchableOpacity 
@@ -148,7 +148,8 @@ export default function SetsScreen() {
         data={sets}
         renderItem={renderSetItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
+        numColumns={2}
+        contentContainerStyle={styles.gridContainer}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -219,10 +220,16 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
+  gridContainer: {
+    padding: 16,
+    gap: 12,
+  },
   setItem: {
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
+    marginHorizontal: 6,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
@@ -232,6 +239,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    minHeight: 80,
+    justifyContent: 'center',
   },
   setName: {
     fontSize: 18,

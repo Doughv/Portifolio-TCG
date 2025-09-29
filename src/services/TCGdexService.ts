@@ -109,6 +109,266 @@ class TCGdexService {
     }
   }
 
+  // Baixar dados completos da API e salvar em JSON temporário
+  async downloadAPIDataToTemp(): Promise<{ success: boolean; message: string; stats: any }> {
+    try {
+      console.log('🔄 Baixando dados completos da API...');
+      
+      if (!this.tcgdex) {
+        console.log('SDK não inicializado, tentando inicializar...');
+        await this.initializeSDK(this.language);
+      }
+
+      if (!this.tcgdex) {
+        throw new Error('Não foi possível inicializar o SDK TCGdex');
+      }
+
+      // 1. Baixar séries
+      console.log('📚 Baixando séries...');
+      const apiSeries = await this.tcgdex.serie.list();
+      
+      // 2. Baixar sets
+      console.log('📦 Baixando sets...');
+      const apiSets = await this.tcgdex.set.list();
+      
+      // 3. Baixar cards (em lotes para não sobrecarregar)
+      console.log('🃏 Baixando cards...');
+      let allCards: any[] = [];
+      let page = 1;
+      const pageSize = 1000;
+      
+      while (true) {
+        const cards = await this.tcgdex.card.list({ 
+          limit: pageSize, 
+          offset: (page - 1) * pageSize 
+        });
+        
+        if (cards.length === 0) break;
+        
+        allCards.push(...cards);
+        page++;
+        
+        console.log(`📄 Página ${page}: ${cards.length} cards baixados (Total: ${allCards.length})`);
+        
+        // Limite de segurança
+        if (page > 50) break;
+      }
+
+      // 4. Salvar em arquivos temporários
+      const tempPath = '/tmp/pokemon_api_data';
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Criar diretório temporário
+      if (!fs.existsSync(tempPath)) {
+        fs.mkdirSync(tempPath, { recursive: true });
+      }
+
+      // Salvar séries
+      fs.writeFileSync(
+        path.join(tempPath, 'pokemon_series.json'),
+        JSON.stringify(apiSeries, null, 2)
+      );
+
+      // Salvar sets
+      fs.writeFileSync(
+        path.join(tempPath, 'pokemon_sets.json'),
+        JSON.stringify(apiSets, null, 2)
+      );
+
+      // Salvar cards
+      fs.writeFileSync(
+        path.join(tempPath, 'pokemon_cards_detailed.json'),
+        JSON.stringify(allCards, null, 2)
+      );
+
+      const stats = {
+        series: apiSeries.length,
+        sets: apiSets.length,
+        cards: allCards.length
+      };
+
+      console.log('✅ Dados da API salvos em arquivos temporários:', stats);
+
+      return {
+        success: true,
+        message: `Dados baixados com sucesso! ${stats.series} séries, ${stats.sets} sets e ${stats.cards} cards.`,
+        stats
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro ao baixar dados da API:', error);
+      return {
+        success: false,
+        message: `Erro ao baixar dados: ${error.message}`,
+        stats: null
+      };
+    }
+  }
+
+  // Estratégia híbrida inteligente: Sincronização incremental + cache de imagens
+  async syncIntelligent(): Promise<{ success: boolean; message: string; stats: any }> {
+    try {
+      console.log('🧠 Iniciando sincronização inteligente...');
+      
+      // Garantir que o banco esteja inicializado
+      await DatabaseService.initialize();
+      
+      if (!this.tcgdex) {
+        await this.initializeSDK(this.language);
+      }
+
+      if (!this.tcgdex) {
+        throw new Error('SDK não inicializado');
+      }
+
+      let stats = { series: 0, sets: 0, cards: 0 };
+
+      // 1. Verificar se há dados no banco
+      const dbStats = await DatabaseService.getStats();
+      console.log('📊 Estatísticas do banco:', dbStats);
+      
+      if (dbStats.series === 0 && dbStats.sets === 0 && dbStats.cards === 0) {
+        console.log('📥 Banco vazio, migração inicial dos JSONs...');
+        return await this.migrateFromJSONs();
+      }
+
+      console.log('🔄 Banco tem dados, iniciando sincronização incremental...');
+
+      // 2. Sincronização incremental de séries
+      console.log('📚 Verificando séries novas...');
+      const apiSeries = await this.tcgdex.serie.list();
+      const dbSeries = await DatabaseService.getAllSeries();
+      const existingSeriesIds = new Set(dbSeries.map(s => s.id));
+      
+      const newSeries = apiSeries.filter((s: any) => !existingSeriesIds.has(s.id));
+      
+      for (const serie of newSeries) {
+        await DatabaseService.insertSeries({
+          id: serie.id,
+          name: serie.name,
+          logo: serie.logo || '',
+          totalSets: 0 // Será atualizado quando sincronizarmos os sets
+        });
+        stats.series++;
+      }
+
+      // 3. Sincronização incremental de sets
+      console.log('📦 Verificando sets novos...');
+      const apiSets = await this.tcgdex.set.list();
+      const dbSets = await DatabaseService.getAllSets();
+      const existingSetIds = new Set(dbSets.map(s => s.id));
+      
+      const newSets = apiSets.filter((s: any) => !existingSetIds.has(s.id));
+      
+      for (const set of newSets) {
+        let seriesId = set.serie || set.series;
+        if (!seriesId) {
+          seriesId = this.inferSeriesFromSetId(set.id);
+        }
+        
+        await DatabaseService.insertSet({
+          id: set.id,
+          name: set.name,
+          series: seriesId,
+          releaseDate: set.releaseDate || new Date().toISOString(),
+          totalCards: set.cardCount?.total || set.cardCount?.official || 0,
+          symbol: set.symbol || '',
+          logo: set.logo || ''
+        });
+        stats.sets++;
+      }
+
+      // 4. Sincronização incremental de cards (apenas novos)
+      console.log('🃏 Verificando cards novos...');
+      const dbCards = await DatabaseService.getAllCards();
+      const existingCardIds = new Set(dbCards.map(c => c.id));
+      
+      // Buscar cards em lotes menores para não sobrecarregar
+      let allNewCards: any[] = [];
+      let page = 1;
+      const pageSize = 500;
+      
+      while (allNewCards.length < 1000) { // Limite de segurança
+        const cards = await this.tcgdex.card.list({ 
+          limit: pageSize, 
+          offset: (page - 1) * pageSize 
+        });
+        
+        if (cards.length === 0) break;
+        
+        const newCards = cards.filter((c: any) => !existingCardIds.has(c.id));
+        allNewCards.push(...newCards);
+        
+        if (newCards.length === 0) break; // Não há mais cards novos
+        
+        page++;
+        console.log(`📄 Lote ${page}: ${newCards.length} cartas novas encontradas`);
+        console.log(`📊 Total acumulado: ${allNewCards.length} cartas`);
+      }
+
+      // Processar cards novos em lotes
+      if (allNewCards.length > 0) {
+        console.log(`🃏 Processando ${allNewCards.length} cartas em lotes...`);
+        console.log(`🔍 Primeiras 5 cartas encontradas:`);
+        allNewCards.slice(0, 5).forEach((card, index) => {
+          console.log(`  ${index + 1}. ${card.name} (${card.id})`);
+        });
+        
+        const batchSize = 100;
+        for (let i = 0; i < allNewCards.length; i += batchSize) {
+          const batch = allNewCards.slice(i, i + batchSize);
+          const batchNumber = Math.floor(i / batchSize) + 1;
+          console.log(`📦 Lote ${batchNumber}: Processando ${batch.length} cartas...`);
+          
+          // Mostrar algumas cartas do lote
+          batch.slice(0, 3).forEach((card, index) => {
+            console.log(`  ${index + 1}. ${card.name} - Coletada!`);
+          });
+          if (batch.length > 3) {
+            console.log(`  ... e mais ${batch.length - 3} cartas`);
+          }
+          
+          await this.processCardBatch(batch);
+          stats.cards += batch.length;
+          console.log(`✅ Lote ${batchNumber} concluído!`);
+        }
+        console.log(`🎉 ${stats.cards} cartas coletadas e armazenadas no Portfólio TCG!`);
+      } else {
+        console.log('✅ Nenhuma carta nova encontrada para sincronizar');
+      }
+
+      // 5. Atualizar totalSets das séries após sincronização
+      console.log('🔄 Atualizando contadores de sets por série...');
+      const allSeries = await DatabaseService.getAllSeries();
+      for (const series of allSeries) {
+        const seriesSets = await DatabaseService.getSetsBySeries(series.id);
+        await DatabaseService.insertSeries({
+          id: series.id,
+          name: series.name,
+          logo: series.logo,
+          totalSets: seriesSets.length
+        });
+      }
+
+      console.log('✅ Sincronização inteligente concluída:', stats);
+
+      return {
+        success: true,
+        message: `Sincronização concluída! ${stats.series} séries, ${stats.sets} sets e ${stats.cards} cards novos.`,
+        stats
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro na sincronização inteligente:', error);
+      return {
+        success: false,
+        message: `Erro na sincronização: ${error.message}`,
+        stats: null
+      };
+    }
+  }
+
   // Sincronizar apenas dados novos (não tudo)
   async syncUpdatesOnly(): Promise<{ success: boolean; message: string; stats: any }> {
     try {
@@ -217,10 +477,17 @@ class TCGdexService {
       console.log(`Encontrados ${newSets.length} sets novos para sincronizar`);
       
       for (const set of newSets) {
+        // Garantir que sempre temos uma série válida
+        let seriesId = set.serie || set.series;
+        if (!seriesId) {
+          seriesId = this.inferSeriesFromSetId(set.id);
+          console.log(`⚠️ Série não definida para set ${set.id}, inferindo: ${seriesId}`);
+        }
+        
         await DatabaseService.insertSet({
           id: set.id,
           name: set.name,
-          series: set.serie || set.series,
+          series: seriesId,
           releaseDate: set.releaseDate || new Date().toISOString(),
           totalCards: set.cardCount?.total || set.cardCount?.official || 0,
           symbol: set.symbol || '',
@@ -294,23 +561,89 @@ class TCGdexService {
 
   // Processar lote de cards
   private async processCardBatch(cards: any[]): Promise<void> {
-    const processedCards: PokemonCard[] = cards.map(card => ({
-      id: card.id,
-      name: card.name,
-      image: card.image || card.images?.large || card.images?.small || '',
-      rarity: card.rarity || 'Unknown',
-      set: card.set?.id || 'Unknown',
-      series: card.set?.serie || card.set?.series || 'Unknown',
-      price: this.extractPrice(card.cardmarket?.prices),
-      hp: this.extractHP(card.hp),
-      types: this.extractTypes(card.types),
-      attacks: this.extractAttacks(card.attacks),
-      weaknesses: this.extractWeaknesses(card.weaknesses),
-      resistances: this.extractResistances(card.resistances),
-      lastUpdated: new Date().toISOString()
-    }));
+    // Garantir que o banco esteja inicializado
+    await DatabaseService.initialize();
+    
+    const processedCards: PokemonCard[] = cards.map(card => {
+      // Garantir que sempre temos set e série válidos
+      let setId = card.set?.id || 'Unknown';
+      let seriesId = card.set?.serie || card.set?.series || 'Unknown';
+      
+      // Se não tem set definido, tentar inferir do ID do card
+      if (setId === 'Unknown' && card.id) {
+        const parts = card.id.split('-');
+        if (parts.length >= 2) {
+          setId = parts[0]; // bw1, base1, etc.
+        }
+      }
+      
+      // Se não tem série definida, inferir do set
+      if (seriesId === 'Unknown' && setId !== 'Unknown') {
+        seriesId = this.inferSeriesFromSetId(setId);
+      }
+      
+      // Garantir que sempre temos uma série válida
+      if (!seriesId || seriesId === 'Unknown') {
+        seriesId = this.inferSeriesFromSetId(setId) || 'unknown';
+      }
+      
+      // Garantir que sempre temos um set válido
+      if (!setId || setId === 'Unknown') {
+        setId = 'unknown';
+      }
+      
+      // Debug: verificar se ainda há problemas
+      if (!seriesId || !setId) {
+        console.error(`❌ Erro na carta ${card.id}: setId=${setId}, seriesId=${seriesId}`);
+        console.error(`❌ Card data:`, JSON.stringify(card, null, 2));
+      }
+      
+      return {
+        id: card.id,
+        name: card.name,
+        image: card.image || card.images?.large || card.images?.small || '',
+        rarity: card.rarity || 'Unknown',
+        set: setId,
+        series: seriesId,
+        price: this.extractPrice(card.cardmarket?.prices),
+        localId: card.localId || this.extractLocalId(card.id),
+        hp: this.extractHP(card.hp),
+        types: this.extractTypes(card.types),
+        attacks: this.extractAttacks(card.attacks),
+        weaknesses: this.extractWeaknesses(card.weaknesses),
+        resistances: this.extractResistances(card.resistances),
+        // Novos campos expandidos
+        category: card.category || null,
+        illustrator: card.illustrator || null,
+        dexId: card.dexId || null,
+        stage: card.stage || null,
+        retreat: card.retreat || null,
+        legal: card.legal || null,
+        variants: card.variants || null,
+        variantsDetailed: card.variants_detailed || null,
+        updated: card.updated || null,
+        lastUpdated: new Date().toISOString()
+      };
+    });
     
     await DatabaseService.updateCardsBatch(processedCards);
+  }
+
+  // Extrair localId do ID da carta (ex: "bw1-1" -> "001", "base1-25" -> "025")
+  private extractLocalId(cardId: string): string | null {
+    if (!cardId) return null;
+    
+    const parts = cardId.split('-');
+    if (parts.length >= 2) {
+      const localId = parts[parts.length - 1]; // Pega a última parte
+      // Verificar se é um número válido
+      if (/^\d+$/.test(localId)) {
+        // Formatar como número de 3 dígitos (001, 025, 100)
+        return localId.padStart(3, '0');
+      }
+    }
+    
+    return null;
   }
 
   // Métodos auxiliares para extrair dados
@@ -371,6 +704,51 @@ class TCGdexService {
     }));
   }
 
+  // Executar script de população com dados da API
+  async runPopulateScriptWithAPIData(): Promise<{ success: boolean; message: string; stats: any }> {
+    try {
+      console.log('🔄 Executando script de população com dados da API...');
+      
+      // 1. Baixar dados da API
+      const downloadResult = await this.downloadAPIDataToTemp();
+      if (!downloadResult.success) {
+        return downloadResult;
+      }
+
+      // 2. Executar script de população
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+
+      console.log('📝 Executando script de população...');
+      const { stdout, stderr } = await execAsync('cd /home/douglasdsouza/ProjetosCursor/Portifolio-TCG && npm run populate-db');
+      
+      if (stderr) {
+        console.warn('⚠️ Warnings do script:', stderr);
+      }
+      
+      console.log('✅ Script executado:', stdout);
+
+      // 3. Migrar para o banco
+      console.log('💾 Migrando para o banco...');
+      const migrationResult = await this.migrateFromJSONs();
+
+      return {
+        success: migrationResult.success,
+        message: `Sincronização completa! ${downloadResult.message} ${migrationResult.message}`,
+        stats: migrationResult.stats
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro na sincronização completa:', error);
+      return {
+        success: false,
+        message: `Erro na sincronização: ${error.message}`,
+        stats: null
+      };
+    }
+  }
+
   // Migrar dados dos JSONs para o banco (atalho inicial)
   async migrateFromJSONs(): Promise<{ success: boolean; message: string; stats: any }> {
     try {
@@ -394,21 +772,27 @@ class TCGdexService {
         };
       }
 
-      // Importar dados dos JSONs processados
+      // Importar dados dos JSONs originais
       try {
-        const seriesData = require('../data/series.json');
-        const setsData = require('../data/sets.json');
-        const cardsData = require('../data/cards.json');
+        const seriesData = require('../../assets/data/pokemon_series.json');
+        const setsData = require('../../assets/data/pokemon_sets.json');
+        const cardsData = require('../../assets/data/pokemon_cards_detailed.json');
 
         // 1. Migrar séries
         console.log('Migrando séries...');
         for (const series of seriesData) {
           try {
+            // Calcular total de sets para esta série
+            const seriesSets = setsData.filter((set: any) => {
+              const inferredSeries = this.inferSeriesFromSetId(set.id);
+              return inferredSeries === series.id;
+            });
+            
             await DatabaseService.insertSeries({
               id: series.id,
               name: series.name,
               logo: series.logo || '',
-              totalSets: 0
+              totalSets: seriesSets.length
             });
             stats.series++;
           } catch (error) {
@@ -663,8 +1047,10 @@ class TCGdexService {
     if (setId.startsWith('cel')) return 'sm';  // Celestial Storm (Sol e Lua)
     if (setId.startsWith('A')) return 'tcgp';  // Sets especiais (Pokémon Estampas Ilustradas Pocket)
     if (setId.startsWith('P-')) return 'base'; // Sets promocionais (Base)
+    if (setId.startsWith('me')) return 'me';   // Sets especiais (Mega Evolution, etc.)
     
     // Se não conseguir inferir, usar 'base' como padrão (silencioso)
+    console.warn(`⚠️ Não foi possível inferir série para o set ${setId}, usando 'base' como padrão`);
     return 'base';
   }
 
@@ -676,6 +1062,456 @@ class TCGdexService {
     } catch (error) {
       console.error('Erro na busca no banco:', error);
       return [];
+    }
+  }
+
+  // Baixar detalhes das cartas que não têm informações completas
+  async downloadCardDetails(setId?: string): Promise<{ success: boolean; message: string; stats: any }> {
+    try {
+      console.log('🔄 Iniciando download de detalhes das cartas...');
+      
+      // Garantir que o banco esteja inicializado
+      await DatabaseService.initialize();
+      
+      if (!this.tcgdex) {
+        await this.initializeSDK(this.language);
+      }
+
+      if (!this.tcgdex) {
+        throw new Error('SDK não inicializado');
+      }
+
+      // Obter cartas do banco que precisam de detalhes
+      let cardsToUpdate: PokemonCard[];
+      if (setId) {
+        cardsToUpdate = await DatabaseService.getCardsBySet(setId);
+      } else {
+        cardsToUpdate = await DatabaseService.getAllCards();
+      }
+
+      // Filtrar cartas que não têm detalhes completos
+      const cardsNeedingDetails = cardsToUpdate.filter(card => {
+        // Campos obrigatórios para todas as cartas
+        const missingBasicFields = !card.category || !card.rarity || !card.image;
+        
+        // HP é obrigatório apenas para Pokémon (category === "Pokemon")
+        const isPokemon = card.category === 'Pokemon';
+        const missingHp = isPokemon && !card.hp;
+        
+        return missingBasicFields || missingHp;
+      });
+
+      console.log(`🔍 Total de cartas no banco: ${cardsToUpdate.length}`);
+      console.log(`📥 Cartas que precisam de detalhes: ${cardsNeedingDetails.length}`);
+      
+      if (cardsNeedingDetails.length === 0) {
+        console.log('✅ Todas as cartas já têm detalhes completos!');
+        return {
+          success: true,
+          message: 'Todas as cartas já têm detalhes completos',
+          stats: { updated: 0, total: cardsToUpdate.length }
+        };
+      }
+
+      let updated = 0;
+      let errors = 0;
+
+      // Processar cartas em lotes para não sobrecarregar
+      const batchSize = 10;
+      for (let i = 0; i < cardsNeedingDetails.length; i += batchSize) {
+        const batch = cardsNeedingDetails.slice(i, i + batchSize);
+        
+        console.log(`📦 Processando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(cardsNeedingDetails.length/batchSize)}`);
+        console.log(`🔍 Cartas no lote: ${batch.map(c => c.name).join(', ')}`);
+        
+        await Promise.all(batch.map(async (card) => {
+          try {
+            console.log(`  🔍 Buscando detalhes: ${card.name} (${card.id})`);
+            // Buscar detalhes completos da carta usando SDK
+            const cardDetails = await this.tcgdex.card.get(card.id);
+            
+            // Atualizar carta no banco com detalhes completos
+            await DatabaseService.insertCard({
+              id: cardDetails.id,
+              name: cardDetails.name,
+              set: cardDetails.set?.id || card.set,
+              series: cardDetails.set?.series || card.series,
+              image: cardDetails.image || card.image,
+              rarity: cardDetails.rarity || card.rarity,
+              types: cardDetails.types || card.types,
+              hp: cardDetails.hp || card.hp,
+              attacks: cardDetails.attacks || card.attacks,
+              weaknesses: cardDetails.weaknesses || card.weaknesses,
+              resistances: cardDetails.resistances || card.resistances,
+              price: cardDetails.price || card.price,
+              lastUpdated: new Date().toISOString()
+            });
+            
+            updated++;
+            console.log(`✅ Detalhes atualizados: ${cardDetails.name}`);
+            
+          } catch (error) {
+            console.error(`❌ Erro ao atualizar ${card.name}:`, error);
+            errors++;
+          }
+        }));
+
+        // Pequena pausa entre lotes para não sobrecarregar a API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      console.log(`✅ Download de detalhes concluído: ${updated} atualizadas, ${errors} erros`);
+
+      return {
+        success: true,
+        message: `Detalhes atualizados! ${updated} cartas atualizadas, ${errors} erros`,
+        stats: { updated, errors, total: cardsNeedingDetails.length }
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro no download de detalhes:', error);
+      return {
+        success: false,
+        message: `Erro no download: ${error.message}`,
+        stats: { updated: 0, errors: 1, total: 0 }
+      };
+    }
+  }
+
+  /**
+   * Limpar banco de dados
+   */
+  async clearDatabase(): Promise<void> {
+    try {
+      console.log('🗑️ Limpando banco de dados...');
+      
+      // Garantir que o banco esteja inicializado
+      await DatabaseService.initialize();
+      
+      await DatabaseService.clearAllData();
+      
+      console.log('✅ Banco de dados limpo com sucesso!');
+    } catch (error: any) {
+      console.error('❌ Erro ao limpar banco:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Função para investigar a estrutura do banco e campos das cartas
+   */
+  async investigateDatabaseStructure(): Promise<{
+    success: boolean;
+    message: string;
+    investigation: {
+      tableStructure: any;
+      sampleCards: any[];
+      fieldAnalysis: any;
+    };
+  }> {
+    try {
+      await DatabaseService.initialize();
+      
+      const investigation = {
+        tableStructure: {},
+        sampleCards: [] as any[],
+        fieldAnalysis: {
+          totalCards: 0,
+          cardsWithTypes: 0,
+          cardsWithRarity: 0,
+          cardsWithHp: 0,
+          cardsWithImage: 0,
+          cardsWithLocalId: 0,
+          cardsMissingFields: [] as any[]
+        }
+      };
+
+      console.log('🔍 === INVESTIGAÇÃO DA ESTRUTURA DO BANCO ===');
+
+      // 1. Verificar estrutura da tabela cards
+      console.log('📋 Verificando estrutura da tabela cards...');
+      try {
+        const result = await DatabaseService.getTableStructure('cards');
+        investigation.tableStructure = result;
+        console.log('📋 Estrutura da tabela cards:', result);
+      } catch (error) {
+        console.log('❌ Erro ao verificar estrutura:', error);
+        investigation.tableStructure = [];
+      }
+
+      // 2. Pegar algumas cartas de exemplo
+      console.log('🃏 Coletando cartas de exemplo...');
+      const sampleCards = await DatabaseService.getSampleCards(5);
+      investigation.sampleCards = sampleCards;
+      console.log('🃏 Cartas de exemplo:', sampleCards);
+
+      // 3. Análise detalhada dos campos
+      console.log('📊 Analisando campos das cartas...');
+      const allCards = await DatabaseService.getAllCards();
+      investigation.fieldAnalysis.totalCards = allCards.length;
+
+      // Contar cartas com cada campo preenchido
+      allCards.forEach(card => {
+        if (card.types) investigation.fieldAnalysis.cardsWithTypes++;
+        if (card.rarity) investigation.fieldAnalysis.cardsWithRarity++;
+        if (card.hp) investigation.fieldAnalysis.cardsWithHp++;
+        if (card.image) investigation.fieldAnalysis.cardsWithImage++;
+        if (card.localId) investigation.fieldAnalysis.cardsWithLocalId++;
+        
+        // Identificar cartas com campos faltando (lógica corrigida)
+        const missingFields = [];
+        if (!card.category) missingFields.push('category');
+        if (!card.rarity) missingFields.push('rarity');
+        if (!card.image) missingFields.push('image');
+        
+        // HP é obrigatório apenas para Pokémon (category === "Pokemon")
+        const isPokemon = card.category === 'Pokemon';
+        if (isPokemon && !card.hp) missingFields.push('hp');
+        
+        if (missingFields.length > 0) {
+          investigation.fieldAnalysis.cardsMissingFields.push({
+            name: card.name,
+            id: card.id,
+            missingFields: missingFields
+          });
+        }
+      });
+
+      console.log('📊 Análise dos campos:');
+      console.log(`  Total de cartas: ${investigation.fieldAnalysis.totalCards}`);
+      console.log(`  Com types: ${investigation.fieldAnalysis.cardsWithTypes}`);
+      console.log(`  Com rarity: ${investigation.fieldAnalysis.cardsWithRarity}`);
+      console.log(`  Com hp: ${investigation.fieldAnalysis.cardsWithHp}`);
+      console.log(`  Com image: ${investigation.fieldAnalysis.cardsWithImage}`);
+      console.log(`  Com localId: ${investigation.fieldAnalysis.cardsWithLocalId}`);
+      console.log(`  Com campos faltando: ${investigation.fieldAnalysis.cardsMissingFields.length}`);
+
+      // Mostrar algumas cartas com campos faltando
+      if (investigation.fieldAnalysis.cardsMissingFields.length > 0) {
+        console.log('🔍 Primeiras cartas com campos faltando:');
+        investigation.fieldAnalysis.cardsMissingFields.slice(0, 5).forEach(card => {
+          console.log(`  ${card.name} (${card.id}): falta ${card.missingFields.join(', ')}`);
+        });
+      }
+
+      console.log('🔍 === INVESTIGAÇÃO CONCLUÍDA ===');
+
+      return {
+        success: true,
+        message: `Investigation completed: ${investigation.fieldAnalysis.cardsMissingFields.length} cards missing fields`,
+        investigation
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro na investigação:', error);
+      return {
+        success: false,
+        message: `Erro na investigação: ${error.message}`,
+        investigation: {
+          tableStructure: {},
+          sampleCards: [],
+          fieldAnalysis: {
+            totalCards: 0,
+            cardsWithTypes: 0,
+            cardsWithRarity: 0,
+            cardsWithHp: 0,
+            cardsWithImage: 0,
+            cardsWithLocalId: 0,
+            cardsMissingFields: []
+          }
+        }
+      };
+    }
+  }
+
+  /**
+   * Função de DEBUG - apenas analisa o que precisa ser atualizado sem fazer alterações
+   */
+  async analyzeDatabaseStatus(): Promise<{
+    success: boolean;
+    message: string;
+    analysis: {
+      database: any;
+      api: any;
+      needsUpdate: {
+        series: any[];
+        sets: any[];
+        cards: any[];
+        cardDetails: any[];
+      };
+      recommendations: string[];
+    };
+  }> {
+    try {
+      await DatabaseService.initialize();
+      
+      const analysis = {
+        database: await DatabaseService.getStats(),
+        api: { series: 0, sets: 0, cards: 0 },
+        needsUpdate: {
+          series: [] as any[],
+          sets: [] as any[],
+          cards: [] as any[],
+          cardDetails: [] as any[]
+        },
+        recommendations: [] as string[]
+      };
+
+      console.log('🔍 === ANÁLISE DE DEBUG INICIADA ===');
+      console.log('📊 Estatísticas do banco:', analysis.database);
+
+      // 1. Verificar se banco está vazio
+      if (analysis.database.series === 0 && analysis.database.sets === 0 && analysis.database.cards === 0) {
+        analysis.recommendations.push('🆕 Banco vazio - Recomendado: Migração completa dos JSONs');
+        return {
+          success: true,
+          message: 'Banco vazio - precisa de migração inicial',
+          analysis
+        };
+      }
+
+      // 2. Analisar séries
+      console.log('📚 Analisando séries...');
+      const apiSeries = await this.tcgdex.serie.list();
+      const dbSeries = await DatabaseService.getAllSeries();
+      analysis.api.series = apiSeries.length;
+      
+      const existingSeriesIds = new Set(dbSeries.map((s: any) => s.id));
+      const newSeries = apiSeries.filter((s: any) => !existingSeriesIds.has(s.id));
+      analysis.needsUpdate.series = newSeries;
+      
+      if (newSeries.length > 0) {
+        analysis.recommendations.push(`📚 ${newSeries.length} séries novas encontradas`);
+        console.log(`📚 Séries novas: ${newSeries.map((s: any) => s.name).join(', ')}`);
+      }
+
+      // 3. Analisar sets
+      console.log('📦 Analisando sets...');
+      const apiSets = await this.tcgdex.set.list();
+      const dbSets = await DatabaseService.getAllSets();
+      analysis.api.sets = apiSets.length;
+      
+      const existingSetIds = new Set(dbSets.map((s: any) => s.id));
+      const newSets = apiSets.filter((s: any) => !existingSetIds.has(s.id));
+      analysis.needsUpdate.sets = newSets;
+      
+      if (newSets.length > 0) {
+        analysis.recommendations.push(`📦 ${newSets.length} sets novos encontrados`);
+        console.log(`📦 Sets novos: ${newSets.map((s: any) => s.name).join(', ')}`);
+      }
+
+      // 4. Analisar cards (primeira página apenas para debug)
+      console.log('🃏 Analisando cards (primeira página)...');
+      const apiCardsPage1 = await this.tcgdex.card.list({ page: 1, pageSize: 100 });
+      const dbCards = await DatabaseService.getAllCards();
+      analysis.api.cards = apiCardsPage1.total || 0;
+      
+      const existingCardIds = new Set(dbCards.map((c: any) => c.id));
+      const newCards = apiCardsPage1.data?.filter((c: any) => !existingCardIds.has(c.id)) || [];
+      analysis.needsUpdate.cards = newCards.slice(0, 10); // Apenas primeiras 10 para debug
+      
+      if (newCards.length > 0) {
+        analysis.recommendations.push(`🃏 ${newCards.length} cartas novas encontradas (primeira página)`);
+        console.log(`🃏 Primeiras cartas novas: ${newCards.slice(0, 5).map((c: any) => c.name).join(', ')}`);
+      }
+
+      // 5. Analisar cartas que precisam de detalhes
+      console.log('🔍 Analisando cartas que precisam de detalhes...');
+      const cardsNeedingDetails = dbCards.filter(card => {
+        // Campos obrigatórios para todas as cartas
+        const missingBasicFields = !card.category || !card.rarity || !card.image;
+        
+        // HP é obrigatório apenas para Pokémon (category === "Pokemon")
+        const isPokemon = card.category === 'Pokemon';
+        const missingHp = isPokemon && !card.hp;
+        
+        return missingBasicFields || missingHp;
+      });
+      analysis.needsUpdate.cardDetails = cardsNeedingDetails.slice(0, 20); // Apenas primeiras 20 para debug
+      
+      if (cardsNeedingDetails.length > 0) {
+        analysis.recommendations.push(`🔍 ${cardsNeedingDetails.length} cartas precisam de detalhes`);
+        console.log(`🔍 Cartas sem detalhes: ${cardsNeedingDetails.slice(0, 5).map(c => c.name).join(', ')}`);
+      }
+
+      // 6. Gerar resumo
+      const totalUpdates = analysis.needsUpdate.series.length + 
+                          analysis.needsUpdate.sets.length + 
+                          analysis.needsUpdate.cards.length + 
+                          analysis.needsUpdate.cardDetails.length;
+
+      if (totalUpdates === 0) {
+        analysis.recommendations.push('✅ Banco está atualizado - nenhuma atualização necessária');
+      } else {
+        analysis.recommendations.push(`⚠️ Total de atualizações necessárias: ${totalUpdates}`);
+      }
+
+      console.log('🔍 === ANÁLISE DE DEBUG CONCLUÍDA ===');
+      console.log('📋 Recomendações:', analysis.recommendations);
+
+      return {
+        success: true,
+        message: `Análise concluída: ${totalUpdates} atualizações necessárias`,
+        analysis
+      };
+
+    } catch (error: any) {
+      console.error('❌ Erro na análise de debug:', error);
+      return {
+        success: false,
+        message: `Erro na análise: ${error.message}`,
+        analysis: {
+          database: { series: 0, sets: 0, cards: 0 },
+          api: { series: 0, sets: 0, cards: 0 },
+          needsUpdate: { series: [], sets: [], cards: [], cardDetails: [] },
+          recommendations: [`❌ Erro: ${error.message}`]
+        }
+      };
+    }
+  }
+
+  // Obter URL da imagem usando o SDK (baseado no projeto anterior)
+  getImageURL(card: any, quality: string = 'high', extension: string = 'webp'): string {
+    try {
+      console.log('Debug getImageURL:', {
+        cardName: card.name,
+        cardId: card.id,
+        hasImage: !!card.image,
+        imageValue: card.image
+      });
+      
+      // Se a carta já tem uma propriedade image, usar ela
+      if (card && card.image) {
+        // Verificar se a URL já tem qualidade e extensão
+        let imageUrl = card.image;
+        if (!imageUrl.includes('/high.webp') && !imageUrl.includes('/medium.webp') && !imageUrl.includes('/low.webp')) {
+          // Adicionar qualidade e extensão se não tiver
+          imageUrl = imageUrl.endsWith('/') ? imageUrl : imageUrl + '/';
+          imageUrl += `${quality}.webp`;
+        }
+        console.log('Usando image da carta:', imageUrl);
+        return imageUrl;
+      }
+      
+      // Se tem método getImageURL do SDK, usar ele
+      if (card && typeof card.getImageURL === 'function') {
+        const url = card.getImageURL(quality, extension);
+        console.log('URL do SDK:', url);
+        return url;
+      }
+      
+      // Fallback: construir URL manualmente
+      const setId = card.set?.id || card.setId || card.id?.split('-')[0] || 'sv01';
+      const cardNumber = card.localId || card.number || '1';
+      const manualUrl = `https://assets.tcgdex.net/${this.language}/sv/${setId}/${cardNumber}/${quality}.webp`;
+      console.log('URL manual:', manualUrl);
+      return manualUrl;
+    } catch (error) {
+      console.error('Erro ao obter URL da imagem:', error);
+      // Fallback para URL manual
+      const setId = card.set?.id || card.setId || card.id?.split('-')[0] || 'sv01';
+      const cardNumber = card.localId || card.number || '1';
+      return `https://assets.tcgdex.net/${this.language}/sv/${setId}/${cardNumber}/${quality}.webp`;
     }
   }
 }

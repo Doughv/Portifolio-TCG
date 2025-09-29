@@ -6,6 +6,29 @@ class FilterService {
   private selectedExpansions: string[] = [];
   private currentLanguage: string = 'pt';
 
+  /**
+   * Definir horário da última atualização
+   */
+  static async setLastUpdateTime(timestamp: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem('last_update_time', timestamp);
+    } catch (error) {
+      console.error('Erro ao salvar última atualização:', error);
+    }
+  }
+
+  /**
+   * Obter horário da última atualização
+   */
+  static async getLastUpdateTime(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem('last_update_time');
+    } catch (error) {
+      console.error('Erro ao obter última atualização:', error);
+      return null;
+    }
+  }
+
   // Carregar configurações salvas
   async loadSettings(language: string): Promise<void> {
     try {
@@ -38,10 +61,10 @@ class FilterService {
       
       console.log(`Total de séries no banco: ${allSeries.length}`);
       
-      // Se não há filtros selecionados, retornar todas as séries (todas são em português)
+      // Se não há filtros selecionados, retornar array vazio (usuário deve escolher)
       if (this.selectedSeries.length === 0) {
-        console.log(`Retornando todas as ${allSeries.length} séries em português`);
-        return allSeries;
+        console.log('Nenhuma série selecionada, retornando array vazio');
+        return [];
       }
       
       // Retornar apenas as séries selecionadas
@@ -57,9 +80,10 @@ class FilterService {
     try {
       const allSets = await DatabaseService.getSetsBySeries(seriesId);
       
-      // Se não há filtros de expansões selecionados, retornar todos os sets
+      // Se não há filtros de expansões selecionados, retornar array vazio (usuário deve escolher)
       if (this.selectedExpansions.length === 0) {
-        return allSets;
+        console.log('Nenhuma expansão selecionada, retornando array vazio');
+        return [];
       }
       
       // Retornar apenas os sets selecionados
@@ -114,4 +138,9 @@ class FilterService {
   }
 }
 
-export default new FilterService();
+// Instância para compatibilidade com código existente
+const filterServiceInstance = new FilterService();
+
+export default filterServiceInstance;
+export { FilterService };
+export { filterServiceInstance };

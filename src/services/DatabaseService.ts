@@ -9,6 +9,7 @@ export interface PokemonCard {
   series: string;
   price: number;
   lastUpdated: string;
+  localId?: string;
   // Detalhes do card
   hp?: number;
   types?: string[];
@@ -26,6 +27,25 @@ export interface PokemonCard {
     type: string;
     value: string;
   }>;
+  // Novos campos expandidos
+  category?: string;
+  illustrator?: string;
+  dexId?: number[];
+  stage?: string;
+  retreat?: number;
+  legal?: {
+    standard: boolean;
+    expanded: boolean;
+  };
+  variants?: {
+    firstEdition: boolean;
+    holo: boolean;
+    normal: boolean;
+    reverse: boolean;
+    wPromo: boolean;
+  };
+  variantsDetailed?: any[];
+  updated?: string;
 }
 
 export interface PokemonSet {
@@ -47,14 +67,47 @@ export interface PokemonSeries {
 
 class DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
+  private isInitializing: boolean = false;
+  private initPromise: Promise<void> | null = null;
 
   async initialize(): Promise<void> {
+    // Se já está inicializando, aguardar a inicialização existente
+    if (this.isInitializing && this.initPromise) {
+      return this.initPromise;
+    }
+
+    // Se já está inicializado, retornar
+    if (this.db) {
+      return;
+    }
+
+    // Marcar como inicializando e criar promise
+    this.isInitializing = true;
+    this.initPromise = this._doInitialize();
+
     try {
+      await this.initPromise;
+    } finally {
+      this.isInitializing = false;
+      this.initPromise = null;
+    }
+  }
+
+  private async _doInitialize(): Promise<void> {
+    try {
+      console.log('🔄 Inicializando banco de dados...');
       this.db = await SQLite.openDatabaseAsync('pokemon_tcg.db');
       await this.createTables();
-      console.log('Database initialized successfully');
+      
+      // Forçar migração das novas colunas
+      console.log('🔄 Executando migrações...');
+      await this.migrateAddLocalIdColumn();
+      await this.migrateAddExpandedColumns();
+      
+      console.log('✅ Database initialized successfully');
     } catch (error) {
-      console.error('Error initializing database:', error);
+      console.error('❌ Error initializing database:', error);
+      this.db = null;
       throw error;
     }
   }
@@ -101,10 +154,20 @@ class DatabaseService {
         series_id TEXT NOT NULL,
         price REAL DEFAULT 0,
         hp INTEGER,
+        local_id TEXT,
         types TEXT, -- JSON array
         attacks TEXT, -- JSON array
         weaknesses TEXT, -- JSON array
         resistances TEXT, -- JSON array
+        category TEXT, -- Pokemon, Trainer, Energy
+        illustrator TEXT,
+        dex_id TEXT, -- JSON array
+        stage TEXT,
+        retreat INTEGER,
+        legal TEXT, -- JSON object
+        variants TEXT, -- JSON object
+        variants_detailed TEXT, -- JSON array
+        updated TEXT,
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -113,6 +176,12 @@ class DatabaseService {
       );
     `);
 
+    // Migração: Adicionar coluna local_id se não existir
+    await this.migrateAddLocalIdColumn();
+    
+    // Migração: Adicionar novas colunas expandidas
+    await this.migrateAddExpandedColumns();
+
     // Índices para performance
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_cards_set_id ON cards (set_id);
@@ -120,6 +189,68 @@ class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_cards_rarity ON cards (rarity);
       CREATE INDEX IF NOT EXISTS idx_cards_price ON cards (price);
     `);
+  }
+
+  private async migrateAddExpandedColumns(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    const newColumns = [
+      { name: 'category', type: 'TEXT' },
+      { name: 'illustrator', type: 'TEXT' },
+      { name: 'dex_id', type: 'TEXT' },
+      { name: 'stage', type: 'TEXT' },
+      { name: 'retreat', type: 'INTEGER' },
+      { name: 'legal', type: 'TEXT' },
+      { name: 'variants', type: 'TEXT' },
+      { name: 'variants_detailed', type: 'TEXT' },
+      { name: 'updated', type: 'TEXT' }
+    ];
+    
+    for (const column of newColumns) {
+      try {
+        // Verificar se a coluna já existe
+        const result = await this.db.getAllAsync(`PRAGMA table_info(cards);`);
+        const columnExists = result.some((row: any) => row.name === column.name);
+        
+        if (!columnExists) {
+          await this.db.execAsync(`
+            ALTER TABLE cards ADD COLUMN ${column.name} ${column.type};
+          `);
+          console.log(`✅ Coluna ${column.name} adicionada à tabela cards`);
+        } else {
+          console.log(`✅ Coluna ${column.name} já existe na tabela cards`);
+        }
+      } catch (error: any) {
+        console.error(`❌ Erro ao adicionar coluna ${column.name}:`, error);
+        // Continuar mesmo com erro para não quebrar a inicialização
+      }
+    }
+  }
+
+  private async migrateAddLocalIdColumn(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    try {
+      // Verificar se a coluna local_id já existe
+      const result = await this.db.getAllAsync(`
+        PRAGMA table_info(cards);
+      `);
+      
+      const hasLocalIdColumn = result.some((row: any) => row.name === 'local_id');
+      
+      if (!hasLocalIdColumn) {
+        console.log('🔄 Adicionando coluna local_id à tabela cards...');
+        await this.db.execAsync(`
+          ALTER TABLE cards ADD COLUMN local_id TEXT;
+        `);
+        console.log('✅ Coluna local_id adicionada com sucesso!');
+      } else {
+        console.log('✅ Coluna local_id já existe na tabela cards');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao adicionar coluna local_id:', error);
+      // Não falhar a inicialização por causa disso
+    }
   }
 
   // Métodos para Series
@@ -182,22 +313,33 @@ class DatabaseService {
     
     await this.db.runAsync(
       `INSERT OR REPLACE INTO cards (
-        id, name, image, rarity, set_id, series_id, price, hp, 
-        types, attacks, weaknesses, resistances, last_updated
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, name, image, rarity, set_id, series_id, price, hp, local_id,
+        types, attacks, weaknesses, resistances, category, illustrator, 
+        dex_id, stage, retreat, legal, variants, variants_detailed, updated, last_updated
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         card.id,
         card.name,
         card.image,
         card.rarity,
-        card.set,
-        card.series,
+        card.set || 'unknown',
+        card.series || 'unknown',
         card.price,
         card.hp || null,
+        card.localId || null,
         JSON.stringify(card.types || []),
         JSON.stringify(card.attacks || []),
         JSON.stringify(card.weaknesses || []),
         JSON.stringify(card.resistances || []),
+        card.category || null,
+        card.illustrator || null,
+        JSON.stringify(card.dexId || []),
+        card.stage || null,
+        card.retreat || null,
+        card.legal ? JSON.stringify(card.legal) : null,
+        card.variants ? JSON.stringify(card.variants) : null,
+        card.variantsDetailed ? JSON.stringify(card.variantsDetailed) : null,
+        card.updated || null,
         new Date().toISOString()
       ]
     );
@@ -220,11 +362,22 @@ class DatabaseService {
       series: row.series_id as string,
       price: row.price as number,
       lastUpdated: row.last_updated as string,
+      localId: row.local_id as string,
       hp: row.hp as number,
       types: JSON.parse(row.types as string || '[]'),
       attacks: JSON.parse(row.attacks as string || '[]'),
       weaknesses: JSON.parse(row.weaknesses as string || '[]'),
-      resistances: JSON.parse(row.resistances as string || '[]')
+      resistances: JSON.parse(row.resistances as string || '[]'),
+      // Novos campos expandidos
+      category: row.category as string,
+      illustrator: row.illustrator as string,
+      dexId: JSON.parse(row.dex_id as string || '[]'),
+      stage: row.stage as string,
+      retreat: row.retreat as number,
+      legal: row.legal ? JSON.parse(row.legal as string) : null,
+      variants: row.variants ? JSON.parse(row.variants as string) : null,
+      variantsDetailed: row.variants_detailed ? JSON.parse(row.variants_detailed as string) : null,
+      updated: row.updated as string
     }));
   }
 
@@ -245,11 +398,22 @@ class DatabaseService {
       series: row.series_id as string,
       price: row.price as number,
       lastUpdated: row.last_updated as string,
+      localId: row.local_id as string,
       hp: row.hp as number,
       types: JSON.parse(row.types as string || '[]'),
       attacks: JSON.parse(row.attacks as string || '[]'),
       weaknesses: JSON.parse(row.weaknesses as string || '[]'),
-      resistances: JSON.parse(row.resistances as string || '[]')
+      resistances: JSON.parse(row.resistances as string || '[]'),
+      // Novos campos expandidos
+      category: row.category as string,
+      illustrator: row.illustrator as string,
+      dexId: JSON.parse(row.dex_id as string || '[]'),
+      stage: row.stage as string,
+      retreat: row.retreat as number,
+      legal: row.legal ? JSON.parse(row.legal as string) : null,
+      variants: row.variants ? JSON.parse(row.variants as string) : null,
+      variantsDetailed: row.variants_detailed ? JSON.parse(row.variants_detailed as string) : null,
+      updated: row.updated as string
     }));
   }
 
@@ -315,11 +479,22 @@ class DatabaseService {
       series: row.series_id as string,
       price: row.price as number,
       lastUpdated: row.last_updated as string,
+      localId: row.local_id as string,
       hp: row.hp as number,
       types: JSON.parse(row.types as string || '[]'),
       attacks: JSON.parse(row.attacks as string || '[]'),
       weaknesses: JSON.parse(row.weaknesses as string || '[]'),
-      resistances: JSON.parse(row.resistances as string || '[]')
+      resistances: JSON.parse(row.resistances as string || '[]'),
+      // Novos campos expandidos
+      category: row.category as string,
+      illustrator: row.illustrator as string,
+      dexId: JSON.parse(row.dex_id as string || '[]'),
+      stage: row.stage as string,
+      retreat: row.retreat as number,
+      legal: row.legal ? JSON.parse(row.legal as string) : null,
+      variants: row.variants ? JSON.parse(row.variants as string) : null,
+      variantsDetailed: row.variants_detailed ? JSON.parse(row.variants_detailed as string) : null,
+      updated: row.updated as string
     }));
   }
 
@@ -338,15 +513,32 @@ class DatabaseService {
     };
   }
 
-  // Método para limpar todos os dados
+  /**
+   * Limpar todos os dados do banco
+   */
   async clearAllData(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     
-    await this.db.execAsync('DELETE FROM cards');
-    await this.db.execAsync('DELETE FROM sets');
-    await this.db.execAsync('DELETE FROM series');
+    console.log('🗑️ Limpando todas as tabelas...');
     
-    console.log('Todos os dados foram limpos do banco');
+    await this.db.execAsync(`
+      DELETE FROM cards;
+      DELETE FROM sets;
+      DELETE FROM series;
+    `);
+    
+    console.log('✅ Banco de dados limpo!');
+  }
+
+  // Métodos para investigação e debug
+  async getTableStructure(tableName: string): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    return await this.db.getAllAsync(`PRAGMA table_info(${tableName});`);
+  }
+
+  async getSampleCards(limit: number = 5): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    return await this.db.getAllAsync(`SELECT * FROM cards LIMIT ${limit};`);
   }
 
   async close(): Promise<void> {

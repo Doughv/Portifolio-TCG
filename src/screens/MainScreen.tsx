@@ -17,6 +17,7 @@ type RootStackParamList = {
   LanguageConfig: { language: string };
   Series: undefined;
   Settings: undefined;
+  Update: undefined;
 };
 
 type MainScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
@@ -45,9 +46,6 @@ export default function MainScreen() {
       // Atualizar idioma no serviço
       await TCGdexService.setLanguage(language);
       
-      // Recarregar filtros para o novo idioma
-      await FilterService.loadSettings(language);
-      
       // Salvar idioma selecionado
       await AsyncStorage.setItem('selectedLanguage', language);
       
@@ -69,6 +67,10 @@ export default function MainScreen() {
 
   const handleSettingsPress = () => {
     navigation.navigate('LanguageConfig', { language: currentLanguage });
+  };
+
+  const handleUpdatePress = () => {
+    navigation.navigate('Update');
   };
 
   return (
@@ -99,6 +101,16 @@ export default function MainScreen() {
           <View style={styles.buttonContent}>
             <Text style={styles.buttonIcon}>⚙</Text>
             <Text style={styles.buttonText}>CONFIGURAÇÕES</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.updateButton}
+          onPress={handleUpdatePress}
+        >
+          <View style={styles.buttonContent}>
+            <Text style={styles.buttonIcon}>🔄</Text>
+            <Text style={styles.buttonText}>ATUALIZAÇÃO</Text>
           </View>
         </TouchableOpacity>
         
@@ -166,6 +178,21 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     backgroundColor: '#6c757d',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  updateButton: {
+    backgroundColor: '#FF9500',
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 40,

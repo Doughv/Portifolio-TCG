@@ -12,7 +12,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TCGdexService from '../services/TCGdexService';
 import DatabaseService, { PokemonSeries, PokemonSet } from '../services/DatabaseService';
@@ -36,6 +36,13 @@ export default function LanguageConfigScreen() {
   useEffect(() => {
     loadSavedSettings();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Recarregar configurações quando a tela ganha foco
+      loadSavedSettings();
+    }, [])
+  );
 
   useEffect(() => {
     if (selectedLanguage) {
@@ -64,19 +71,21 @@ export default function LanguageConfigScreen() {
         const savedExpansions = await AsyncStorage.getItem(expansionsKey);
 
         if (savedSeries) {
-          setSelectedSeries(JSON.parse(savedSeries));
+          const parsedSeries = JSON.parse(savedSeries);
+          setSelectedSeries(parsedSeries);
+          console.log('Séries carregadas:', parsedSeries);
         } else {
-          // Se não há configurações salvas, selecionar TODAS as séries por padrão
-          console.log('Nenhuma configuração salva, selecionando todas as séries por padrão');
-          // Isso será definido após carregar as séries em loadSeries
+          // Se não há configurações salvas, deixar vazio (usuário deve escolher)
+          console.log('Nenhuma configuração salva, deixando filtros vazios');
+          setSelectedSeries([]);
         }
         
         if (savedExpansions) {
           setSelectedExpansions(JSON.parse(savedExpansions));
         } else {
-          // Se não há configurações salvas, selecionar TODAS as expansões por padrão
-          console.log('Nenhuma configuração salva, selecionando todas as expansões por padrão');
-          // Isso será definido após carregar as expansões
+          // Se não há configurações salvas, deixar vazio (usuário deve escolher)
+          console.log('Nenhuma configuração salva, deixando filtros vazios');
+          setSelectedExpansions([]);
         }
       }
     } catch (error) {
@@ -294,6 +303,137 @@ ${sampleSDKSeries.some(s => s.name.includes('Black & White') || s.name.includes(
     } catch (error) {
       console.error('Erro ao testar SDK:', error);
       Alert.alert('Erro', 'Não foi possível testar o SDK');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const syncIntelligent = async () => {
+    try {
+      Alert.alert(
+        'Sincronização',
+        'Sincronização incremental que baixa apenas dados novos. Mais rápida e eficiente!',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Sincronizar',
+            onPress: async () => {
+              setLoading(true);
+              setSyncProgress(0);
+              setSyncStatus('Iniciando...');
+              try {
+                console.log('🧠 Iniciando sincronização inteligente...');
+                
+                // Simular progresso durante a sincronização
+                const progressInterval = setInterval(() => {
+                  setSyncProgress(prev => {
+                    if (prev >= 90) return prev;
+                    return prev + Math.random() * 10;
+                  });
+                }, 500);
+
+                setSyncStatus('Verificando atualizações...');
+                setSyncProgress(10);
+                
+                const syncResult = await TCGdexService.syncIntelligent();
+                
+                clearInterval(progressInterval);
+                setSyncProgress(100);
+                setSyncStatus('Concluído!');
+                
+                if (syncResult.success) {
+                  Alert.alert(
+                    'Sucesso!', 
+                    `Sincronização concluída!\n\n${syncResult.message}`,
+                    [
+                      {
+                        text: 'OK',
+                        onPress: async () => {
+                          await loadSeries();
+                          await loadExpansions();
+                          setSyncProgress(0);
+                          setSyncStatus('');
+                        }
+                      }
+                    ]
+                  );
+                } else {
+                  Alert.alert('Erro', syncResult.message);
+                  setSyncProgress(0);
+                  setSyncStatus('');
+                }
+                
+              } catch (error) {
+                console.error('Erro na sincronização inteligente:', error);
+                Alert.alert('Erro', 'Falha na sincronização inteligente');
+                setSyncProgress(0);
+                setSyncStatus('');
+              } finally {
+                setLoading(false);
+              }
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+      Alert.alert('Erro', 'Não foi possível sincronizar');
+      setSyncProgress(0);
+      setSyncStatus('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const syncWithAPI = async () => {
+    try {
+      setLoading(true);
+
+      Alert.alert(
+        'Sincronização com API',
+        'Isso vai baixar dados atualizados da API e atualizar o banco. Pode demorar alguns minutos. Continuar?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Sincronizar',
+            onPress: async () => {
+              try {
+                console.log('🚀 Iniciando sincronização com API...');
+                
+                // Usar a nova abordagem: API → JSON → Script → Banco
+                const syncResult = await TCGdexService.runPopulateScriptWithAPIData();
+                
+                if (syncResult.success) {
+                  Alert.alert(
+                    'Sucesso!', 
+                    `Sincronização concluída!\n\n${syncResult.message}`,
+                    [
+                      {
+                        text: 'OK',
+                        onPress: async () => {
+                          // Recarregar séries na tela
+                          await loadSeries();
+                        }
+                      }
+                    ]
+                  );
+                } else {
+                  Alert.alert('Erro', syncResult.message);
+                }
+                
+              } catch (error) {
+                console.error('Erro na sincronização:', error);
+                Alert.alert('Erro', 'Falha na sincronização com API');
+              }
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+      Alert.alert('Erro', 'Não foi possível sincronizar com API');
     } finally {
       setLoading(false);
     }
@@ -587,46 +727,6 @@ ${dbSeries.length > 0 ? '✅ Há séries no banco' : '❌ Nenhuma série no banc
           </View>
         </View>
 
-        {/* Debug - Informações do Banco */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Debug - Banco de Dados</Text>
-          <View style={styles.debugButtonsContainer}>
-            <TouchableOpacity 
-              style={styles.debugButton} 
-              onPress={showDatabaseInfo}
-            >
-              <Text style={styles.debugButtonText}>Ver Banco</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.debugButton, { backgroundColor: '#34C759' }]} 
-              onPress={testSDK}
-            >
-              <Text style={styles.debugButtonText}>Testar SDK</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity 
-            style={[styles.debugButton, { backgroundColor: '#FF3B30' }]} 
-            onPress={resetDatabase}
-          >
-            <Text style={styles.debugButtonText}>🔄 Reset Banco (SDK → JSON)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.debugButton, { backgroundColor: '#5856D6' }]} 
-            onPress={debugSets}
-          >
-            <Text style={styles.debugButtonText}>🔍 Debug Sets</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.debugButton, { backgroundColor: '#FF2D92' }]} 
-            onPress={debugRawData}
-          >
-            <Text style={styles.debugButtonText}>🗃️ Dados Brutos</Text>
-          </TouchableOpacity>
-          <Text style={styles.debugNote}>
-            Testa o que o SDK retorna vs o que está no banco
-          </Text>
-        </View>
-
         {/* Seleção de Séries */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -806,6 +906,37 @@ const styles = StyleSheet.create({
   debugButtonsContainer: {
     flexDirection: 'row',
     gap: 10,
+  },
+  progressContainer: {
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  progressBar: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#34C759',
+    borderRadius: 4,
+  },
+  progressPercent: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: 'bold',
   },
   debugButton: {
     flex: 1,
