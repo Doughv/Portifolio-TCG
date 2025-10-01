@@ -763,25 +763,20 @@ class TCGdexService {
   // Migrar dados dos JSONs para o banco (atalho inicial)
   async migrateFromJSONs(): Promise<{ success: boolean; message: string; stats: any }> {
     try {
-      console.log('Iniciando migração dos JSONs para o banco...');
+      console.log('Iniciando migração incremental dos JSONs para o banco...');
       
       // Implementação direta da migração
       let stats = {
         series: 0,
         sets: 0,
         cards: 0,
-        errors: 0
+        errors: 0,
+        updated: 0
       };
 
-      // Verificar se já temos dados no banco
+      // Obter estatísticas atuais para comparação
       const existingStats = await DatabaseService.getStats();
-      if (existingStats.series > 0 || existingStats.sets > 0 || existingStats.cards > 0) {
-        return {
-          success: true,
-          message: `Dados já existem no banco: ${existingStats.series} séries, ${existingStats.sets} sets, ${existingStats.cards} cards`,
-          stats: existingStats
-        };
-      }
+      console.log(`📊 Banco atual: ${existingStats.series} séries, ${existingStats.sets} sets, ${existingStats.cards} cards`);
 
       // Importar dados dos JSONs originais
       try {
@@ -789,8 +784,11 @@ class TCGdexService {
         const setsData = require('../../assets/data/pokemon_sets.json');
         const cardsData = require('../../assets/data/pokemon_cards_detailed.json');
 
-        // 1. Migrar séries
+        // 1. Migrar séries (incremental)
         console.log('Migrando séries...');
+        const existingSeries = await DatabaseService.getAllSeries();
+        const existingSeriesIds = new Set(existingSeries.map(s => s.id));
+        
         for (const series of seriesData) {
           try {
             // Calcular total de sets para esta série
@@ -799,21 +797,32 @@ class TCGdexService {
               return inferredSeries === series.id;
             });
             
+            const isNew = !existingSeriesIds.has(series.id);
             await DatabaseService.insertSeries({
               id: series.id,
               name: series.name,
               logo: series.logo || '',
               totalSets: seriesSets.length
             });
-            stats.series++;
+            
+            if (isNew) {
+              stats.series++;
+              console.log(`✅ Nova série: ${series.name}`);
+            } else {
+              stats.updated++;
+              console.log(`🔄 Atualizada série: ${series.name}`);
+            }
           } catch (error) {
             console.error('Erro ao inserir série:', series.id, error);
             stats.errors++;
           }
         }
 
-        // 2. Migrar sets
+        // 2. Migrar sets (incremental)
         console.log('Migrando sets...');
+        const existingSets = await DatabaseService.getAllSets();
+        const existingSetIds = new Set(existingSets.map(s => s.id));
+        
         for (const set of setsData) {
           try {
             // Inferir série baseada no ID do set se não tiver definida
@@ -822,6 +831,7 @@ class TCGdexService {
               seriesId = this.inferSeriesFromSetId(set.id);
             }
             
+            const isNew = !existingSetIds.has(set.id);
             await DatabaseService.insertSet({
               id: set.id,
               name: set.name,
@@ -831,16 +841,30 @@ class TCGdexService {
               symbol: set.symbol,
               logo: set.logo
             });
-            stats.sets++;
+            
+            if (isNew) {
+              stats.sets++;
+              console.log(`✅ Novo set: ${set.name}`);
+            } else {
+              stats.updated++;
+              console.log(`🔄 Atualizado set: ${set.name}`);
+            }
           } catch (error) {
             console.error('Erro ao inserir set:', set.id, error);
             stats.errors++;
           }
         }
 
-        // 3. Migrar cards (em lotes)
+        // 3. Migrar cards (incremental)
         console.log('Migrando cards...');
+        const existingCards = await DatabaseService.getAllCards();
+        const existingCardIds = new Set(existingCards.map(c => c.id));
+        console.log(`📊 Cartas existentes no banco: ${existingCardIds.size}`);
+        
         const batchSize = 100;
+        let newCards = 0;
+        let updatedCards = 0;
+        
         for (let i = 0; i < cardsData.length; i += batchSize) {
           const batch = cardsData.slice(i, i + batchSize);
           try {
@@ -881,11 +905,20 @@ class TCGdexService {
               };
             });
             
+            // Contar novas vs atualizadas
+            for (const card of processedBatch) {
+              if (existingCardIds.has(card.id)) {
+                updatedCards++;
+              } else {
+                newCards++;
+              }
+            }
+            
             await DatabaseService.updateCardsBatch(processedBatch);
             stats.cards += batch.length;
             
             if (stats.cards % 1000 === 0) {
-              console.log(`Cards migrados: ${stats.cards}/${cardsData.length}`);
+              console.log(`Cards processados: ${stats.cards}/${cardsData.length} (Novos: ${newCards}, Atualizados: ${updatedCards})`);
             }
           } catch (error) {
             console.error('Erro ao inserir lote de cards:', error);
@@ -893,12 +926,16 @@ class TCGdexService {
           }
         }
 
-        console.log('Migração dos JSONs concluída:', stats);
+        console.log('Migração incremental dos JSONs concluída:', stats);
 
         return {
           success: true,
-          message: `Migração concluída! ${stats.series} séries, ${stats.sets} sets e ${stats.cards} cards migrados. ${stats.errors} erros.`,
-          stats
+          message: `Migração incremental concluída! ${stats.series} séries novas, ${stats.sets} sets novos, ${stats.cards} cards processados (${newCards} novos, ${updatedCards} atualizados). ${stats.errors} erros.`,
+          stats: {
+            ...stats,
+            newCards,
+            updatedCards
+          }
         };
 
       } catch (error: any) {
