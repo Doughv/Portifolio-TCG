@@ -93,19 +93,108 @@ class SimpleUpdater {
     }
   }
   
-  inferSeriesFromSetId(setId) {
+  async inferSeriesFromAPI() {
+    console.log('🔍 Analisando relacionamentos série-set da API...');
+    
+    try {
+      // Buscar dados de séries e sets da API
+      const [apiSeries, apiSets] = await Promise.all([
+        this.makeRequest(this.urls.series),
+        this.makeRequest(this.urls.sets)
+      ]);
+      
+      // Criar mapa de relacionamentos baseado nos dados reais da API
+      const seriesMap = new Map();
+      
+      // 1. Primeiro, usar os relacionamentos explícitos da API
+      apiSets.forEach(set => {
+        if (set.serie || set.series) {
+          const seriesId = set.serie || set.series;
+          seriesMap.set(set.id, seriesId);
+        }
+      });
+      
+      // 2. Para sets sem série explícita, inferir baseado em padrões comuns
+      const patterns = this.detectSeriesPatterns(apiSets);
+      
+      apiSets.forEach(set => {
+        if (!seriesMap.has(set.id)) {
+          const inferredSeries = this.inferFromPatterns(set.id, patterns);
+          if (inferredSeries) {
+            seriesMap.set(set.id, inferredSeries);
+            console.log(`🔗 Inferido: ${set.id} → ${inferredSeries}`);
+          }
+        }
+      });
+      
+      console.log(`📊 Mapeamento criado para ${seriesMap.size} sets`);
+      return seriesMap;
+      
+    } catch (error) {
+      console.error('❌ Erro ao analisar API:', error.message);
+      return new Map();
+    }
+  }
+  
+  detectSeriesPatterns(sets) {
+    const patterns = new Map();
+    
+    // Analisar padrões de IDs para detectar séries automaticamente
+    sets.forEach(set => {
+      if (set.serie || set.series) {
+        const seriesId = set.serie || set.series;
+        const setId = set.id;
+        
+        // Extrair prefixo do ID do set
+        const prefix = setId.split(/[-_]/)[0]; // bw1, xy4, sv07, etc.
+        const basePrefix = prefix.replace(/\d+$/, ''); // bw, xy, sv, etc.
+        
+        if (!patterns.has(basePrefix)) {
+          patterns.set(basePrefix, seriesId);
+        }
+      }
+    });
+    
+    console.log('🎯 Padrões detectados:', Object.fromEntries(patterns));
+    return patterns;
+  }
+  
+  inferFromPatterns(setId, patterns) {
+    // Extrair prefixo base do ID do set
+    const prefix = setId.split(/[-_]/)[0];
+    const basePrefix = prefix.replace(/\d+$/, '');
+    
+    // Procurar padrão correspondente
+    for (const [pattern, seriesId] of patterns.entries()) {
+      if (basePrefix.startsWith(pattern) || pattern.startsWith(basePrefix)) {
+        return seriesId;
+      }
+    }
+    
+    // Se não encontrar padrão, usar o prefixo base como série
+    return basePrefix || 'unknown';
+  }
+  
+  inferSeriesFromSetId(setId, seriesMap = null) {
     if (!setId) return 'unknown';
     
-    const seriesMap = {
+    // Se temos um mapa de séries da API, usar ele
+    if (seriesMap && seriesMap.has(setId)) {
+      return seriesMap.get(setId);
+    }
+    
+    // Fallback para padrões conhecidos (apenas para casos especiais)
+    const knownPatterns = {
       'base': 'base',
       'bw': 'bw',
-      'xy': 'xy',
+      'xy': 'xy', 
       'sm': 'sm',
       'swsh': 'swsh',
-      'sv': 'sv'
+      'sv': 'sv',
+      'me': 'me'
     };
     
-    for (const [prefix, series] of Object.entries(seriesMap)) {
+    for (const [prefix, series] of Object.entries(knownPatterns)) {
       if (setId.startsWith(prefix)) {
         return series;
       }
@@ -118,13 +207,17 @@ class SimpleUpdater {
     console.log('\n📦 === ATUALIZANDO SETS ===');
     
     try {
+      // 1. Primeiro, analisar relacionamentos da API
+      const seriesMap = await this.inferSeriesFromAPI();
+      
+      // 2. Buscar dados dos sets
       const apiSets = await this.makeRequest(this.urls.sets);
       
-      // Processar dados dos sets
+      // 3. Processar dados dos sets usando o mapeamento inteligente
       const processedSets = apiSets.map(set => ({
         id: set.id,
         name: set.name,
-        series: set.serie || set.series || this.inferSeriesFromSetId(set.id),
+        series: set.serie || set.series || this.inferSeriesFromSetId(set.id, seriesMap),
         releaseDate: set.releaseDate || new Date().toISOString(),
         totalCards: set.cardCount?.total || set.cardCount?.official || 0,
         symbol: set.symbol || '',
@@ -133,9 +226,13 @@ class SimpleUpdater {
       
       this.stats.sets.total = processedSets.length;
       
-      // Salvar sets
+      // 4. Salvar sets
       await fs.writeFile(this.setsFile, JSON.stringify(processedSets, null, 2), 'utf8');
       console.log(`💾 ${processedSets.length} sets salvos em: ${this.setsFile}`);
+      
+      // 5. Mostrar estatísticas de mapeamento
+      const mappedCount = processedSets.filter(s => s.series !== 'unknown').length;
+      console.log(`📊 ${mappedCount}/${processedSets.length} sets mapeados para séries`);
       
     } catch (error) {
       console.error('❌ Erro ao atualizar sets:', error.message);
