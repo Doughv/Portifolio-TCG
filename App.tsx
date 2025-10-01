@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
@@ -178,7 +178,32 @@ export default function App() {
         <Stack.Screen 
           name="Update" 
           component={UpdateScreen}
-          options={{ title: 'Atualização' }}
+          options={{ 
+            title: 'Atualização',
+            headerRight: () => (
+              <TouchableOpacity 
+                onPress={() => {
+                  // Aqui você pode acessar a última atualização
+                  Alert.alert(
+                    'Última Atualização',
+                    'Clique aqui para ver quando foi a última atualização',
+                    [{ text: 'OK' }]
+                  );
+                }}
+                style={{
+                  marginRight: 15,
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  borderRadius: 10,
+                  width: 20,
+                  height: 20,
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>?</Text>
+              </TouchableOpacity>
+            )
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -35,11 +35,22 @@ export default function CardsScreen() {
     try {
       setLoading(true);
       console.log(`🔍 Carregando cards do set ${setId} do banco de dados...`);
+      
+      // Verificar se o banco está inicializado
+      await DatabaseService.initialize();
+      console.log('✅ Banco de dados inicializado');
+      
+      // Verificar estatísticas do banco
+      const dbStats = await DatabaseService.getStats();
+      console.log('📊 Estatísticas do banco:', dbStats);
+      
+      // Verificar se há cards para este set
       const cardsData = await FilterService.getFilteredCardsBySet(setId);
       console.log(`📊 Encontrados ${cardsData.length} cards no banco para o set ${setId}`);
       
       if (cardsData.length > 0) {
-        console.log(`✅ Cards carregados: ${cardsData.slice(0, 3).map(c => c.name).join(', ')}...`);
+        console.log(`✅ Cards carregados: ${cardsData.slice(0, 3).map(c => `${c.name} (${c.localId || 'sem ID'})`).join(', ')}...`);
+        console.log(`🔍 Primeiro card detalhado:`, JSON.stringify(cardsData[0], null, 2));
         setCards(cardsData);
         return;
       }

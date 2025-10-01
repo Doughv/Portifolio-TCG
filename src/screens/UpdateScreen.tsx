@@ -28,8 +28,10 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
   const [debugAnalysis, setDebugAnalysis] = useState<any>(null);
   const [investigationResult, setInvestigationResult] = useState<any>(null);
   const [databaseStats, setDatabaseStats] = useState<any>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const appState = useRef(AppState.currentState);
   const logScrollRef = useRef<ScrollView>(null);
+  const cancelTokenRef = useRef<boolean>(false);
 
   useEffect(() => {
     loadLastUpdate();
@@ -77,6 +79,37 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
       
       return limitedLogs;
     });
+  };
+
+  const cancelOperation = async () => {
+    Alert.alert(
+      'Cancelar Operação',
+      'Tem certeza que deseja cancelar a operação em andamento?',
+      [
+        { text: 'Não', style: 'cancel' },
+        {
+          text: 'Sim, Cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            setIsCancelling(true);
+            addLog('🛑 Cancelando operação...');
+            
+            // Marcar para cancelamento
+            cancelTokenRef.current = true;
+            
+            // Aguardar um pouco para permitir que operações se encerrem graciosamente
+            setTimeout(() => {
+              setIsBackgroundRunning(false);
+              setCurrentOperation('');
+              setSyncProgress(0);
+              setIsCancelling(false);
+              cancelTokenRef.current = false;
+              addLog('✅ Operação cancelada com sucesso');
+            }, 1000);
+          }
+        }
+      ]
+    );
   };
 
   // Carregar logs salvos ao inicializar
@@ -139,77 +172,6 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
     };
   }, [isBackgroundRunning]);
 
-  const syncIntelligent = async () => {
-    Alert.alert(
-      'Sincronização Completa',
-      'Esta operação irá:\n\n• Verificar se há dados no banco\n• Se vazio: migrar dos JSONs locais\n• Se há dados: sincronizar apenas novos da API\n• Baixar detalhes das cartas automaticamente\n• Executar em segundo plano\n\nDeseja continuar?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sincronizar',
-            onPress: async () => {
-              setIsLoading(true);
-              setIsBackgroundRunning(true);
-              setSyncProgress(0);
-              setLogs([]);
-              setCurrentOperation('Sincronização Completa');
-              addLog('🚀 Iniciando sincronização completa...');
-
-              // Executar em background sem bloquear UI
-              setTimeout(async () => {
-                try {
-                  // 1. Sincronização Inteligente
-                  addLog('📡 Fase 1: Sincronização inteligente...');
-                  setSyncProgress(10);
-                  const syncResult = await TCGdexService.syncIntelligent();
-                  
-                  if (syncResult.success) {
-                    addLog('✅ Sincronização concluída!');
-                    addLog(`📊 ${syncResult.message}`);
-                    setSyncProgress(50);
-                    
-                    // 2. Download de detalhes automaticamente
-                    addLog('📥 Fase 2: Baixando detalhes das cartas...');
-                    setCurrentOperation('Download de Detalhes');
-                    setSyncProgress(60);
-                    
-                    const detailsResult = await TCGdexService.downloadCardDetails();
-                    
-                    if (detailsResult.success) {
-                      addLog('✅ Download de detalhes concluído!');
-                      addLog(`📊 ${detailsResult.message}`);
-                      addLog(`📈 Estatísticas: ${JSON.stringify(detailsResult.stats)}`);
-                      setSyncProgress(100);
-                      setSyncStatus('Concluído!');
-                    } else {
-                      addLog(`⚠️ Aviso nos detalhes: ${detailsResult.message}`);
-                      setSyncProgress(100);
-                    }
-                    
-                    await FilterServiceClass.setLastUpdateTime(new Date().toISOString());
-                    await loadLastUpdate();
-                    await loadDatabaseStats();
-                  } else {
-                    addLog(`❌ Erro na sincronização: ${syncResult.message}`);
-                  }
-                } catch (error: any) {
-                  addLog(`❌ Erro inesperado: ${error.message}`);
-                } finally {
-                  setIsLoading(false);
-                  setIsBackgroundRunning(false);
-                  setCurrentOperation('');
-                  setSyncProgress(100);
-                }
-              }, 100);
-            },
-        },
-      ]
-    );
-  };
-
   const runInvestigation = async () => {
     setLogs([]);
     setCurrentOperation('Investigação da Estrutura');
@@ -250,7 +212,6 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
   };
 
   const runDebugAnalysis = async () => {
-    setIsLoading(true);
     setLogs([]);
     setCurrentOperation('Análise de Debug');
     addLog('🔍 Iniciando análise de debug...');
@@ -310,8 +271,20 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
             
             setTimeout(async () => {
               try {
+                // Verificar se foi cancelado antes de começar
+                if (cancelTokenRef.current) {
+                  addLog('❌ Operação cancelada antes de iniciar');
+                  return;
+                }
+
                 addLog('🔄 Chamando TCGdexService.migrateFromJSONs()...');
                 const result = await TCGdexService.migrateFromJSONs();
+                
+                // Verificar cancelamento após migração
+                if (cancelTokenRef.current) {
+                  addLog('❌ Operação cancelada após migração');
+                  return;
+                }
                 
                 if (result.success) {
                   addLog('✅ Migração dos JSONs concluída!');
@@ -322,11 +295,17 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
                   addLog(`❌ Erro na migração: ${result.message}`);
                 }
               } catch (error: any) {
-                addLog(`❌ Erro na migração: ${error.message}`);
+                if (cancelTokenRef.current) {
+                  addLog('❌ Operação cancelada devido a erro');
+                } else {
+                  addLog(`❌ Erro na migração: ${error.message}`);
+                }
               } finally {
-                setIsBackgroundRunning(false);
-                setCurrentOperation('');
-                setSyncProgress(0);
+                if (!cancelTokenRef.current) {
+                  setIsBackgroundRunning(false);
+                  setCurrentOperation('');
+                  setSyncProgress(0);
+                }
               }
             }, 100);
           }
@@ -354,16 +333,35 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
             
             setTimeout(async () => {
               try {
+                // Verificar se foi cancelado antes de começar
+                if (cancelTokenRef.current) {
+                  addLog('❌ Operação cancelada antes de iniciar');
+                  return;
+                }
+
                 await TCGdexService.clearDatabase();
+                
+                // Verificar cancelamento após limpeza
+                if (cancelTokenRef.current) {
+                  addLog('❌ Operação cancelada após limpeza');
+                  return;
+                }
+
                 addLog('✅ Banco de dados limpo!');
                 setSyncProgress(100);
                 await loadDatabaseStats();
               } catch (error: any) {
-                addLog(`❌ Erro ao limpar banco: ${error.message}`);
+                if (cancelTokenRef.current) {
+                  addLog('❌ Operação cancelada devido a erro');
+                } else {
+                  addLog(`❌ Erro ao limpar banco: ${error.message}`);
+                }
               } finally {
-                setIsBackgroundRunning(false);
-                setCurrentOperation('');
-                setSyncProgress(0);
+                if (!cancelTokenRef.current) {
+                  setIsBackgroundRunning(false);
+                  setCurrentOperation('');
+                  setSyncProgress(0);
+                }
               }
             }, 100);
           }
@@ -373,16 +371,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🔄 Atualização</Text>
-        {lastUpdate && (
-          <Text style={styles.lastUpdate}>
-            Última atualização: {lastUpdate}
-          </Text>
-        )}
-      </View>
-
+    <View style={styles.container}>
       <ScrollView style={styles.content}>
         {/* Botões de Ação */}
         <View style={styles.actionButtons}>
@@ -392,7 +381,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
             disabled={isBackgroundRunning}
           >
             <Text style={styles.buttonText}>
-              🗑️ Limpar
+              Limpar Banco
             </Text>
           </TouchableOpacity>
 
@@ -402,17 +391,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
             disabled={isBackgroundRunning}
           >
             <Text style={styles.buttonText}>
-              📦 Repopular JSON
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.syncButton]}
-            onPress={syncIntelligent}
-            disabled={isBackgroundRunning}
-          >
-            <Text style={styles.buttonText}>
-              🔄 Atualizar API
+              Carregar Banco
             </Text>
           </TouchableOpacity>
         </View>
@@ -425,7 +404,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
             disabled={isBackgroundRunning}
           >
             <Text style={styles.buttonText}>
-              🔍 Debug Status
+              Debug Status
             </Text>
           </TouchableOpacity>
 
@@ -435,7 +414,35 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
             disabled={isBackgroundRunning}
           >
             <Text style={styles.buttonText}>
-              🔬 Investigar
+              Investigar
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.debugButton]}
+            onPress={async () => {
+              setLogs([]);
+              setCurrentOperation('Teste de Verificação');
+              addLog('Testando verificação de cards...');
+              
+              try {
+                const dbCards = await DatabaseService.getAllCards();
+                addLog(`Cards no banco: ${dbCards.length}`);
+                if (dbCards.length > 0) {
+                  const ids = dbCards.slice(0, 5).map(c => c.id);
+                  addLog(`Primeiros IDs: ${ids.join(', ')}`);
+                }
+                addLog('Teste concluído!');
+              } catch (error: any) {
+                addLog(`Erro: ${error.message}`);
+              } finally {
+                setCurrentOperation('');
+              }
+            }}
+            disabled={isBackgroundRunning}
+          >
+            <Text style={styles.buttonText}>
+              Teste Cards
             </Text>
           </TouchableOpacity>
         </View>
@@ -468,9 +475,20 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
               <Text style={styles.progressTitle}>
                 {currentOperation || 'Processando...'}
               </Text>
-              <Text style={styles.progressPercent}>
-                {Math.round(syncProgress)}%
-              </Text>
+              <View style={styles.progressHeaderRight}>
+                <Text style={styles.progressPercent}>
+                  {Math.round(syncProgress)}%
+                </Text>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={cancelOperation}
+                  disabled={isCancelling}
+                >
+                  <Text style={styles.cancelButtonText}>
+                    {isCancelling ? '🛑 Cancelando...' : '❌ Cancelar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={styles.progressBar}>
               <View 
@@ -509,8 +527,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
           </ScrollView>
         </View>
       </ScrollView>
-
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -519,36 +536,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#007AFF',
-    padding: 20,
-    paddingTop: 10,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-  },
-  lastUpdate: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    marginTop: 5,
-  },
   content: {
     flex: 1,
-    padding: 20,
+    paddingTop: 20, // Reduzido de 50 para 20
   },
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
+    justifyContent: 'space-around',
+    marginBottom: 10,
+    paddingHorizontal: 12,
   },
   debugButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 12,
+    paddingHorizontal: 12, // Reduzido de 15 para 12
   },
   button: {
     flex: 1,
@@ -563,6 +565,9 @@ const styles = StyleSheet.create({
   },
   migrateButton: {
     backgroundColor: '#34C759',
+  },
+  clearButton: {
+    backgroundColor: '#FF3B30',
   },
   debugButton: {
     backgroundColor: '#8E8E93',
@@ -617,6 +622,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  progressHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   progressTitle: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -626,6 +636,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#007AFF',
+  },
+  cancelButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   progressBar: {
     height: 8,

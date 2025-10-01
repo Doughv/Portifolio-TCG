@@ -284,6 +284,9 @@ class TCGdexService {
       const dbCards = await DatabaseService.getAllCards();
       const existingCardIds = new Set(dbCards.map(c => c.id));
       
+      console.log(`🔍 Debug: Total de cards no banco: ${dbCards.length}`);
+      console.log(`🔍 Debug: Primeiros 5 IDs do banco:`, Array.from(existingCardIds).slice(0, 5));
+      
       // Buscar cards em lotes menores para não sobrecarregar
       let allNewCards: any[] = [];
       let page = 1;
@@ -297,8 +300,16 @@ class TCGdexService {
         
         if (cards.length === 0) break;
         
+        console.log(`🔍 Debug: Lote ${page} da API: ${cards.length} cards`);
+        console.log(`🔍 Debug: Primeiros 5 IDs da API:`, cards.slice(0, 5).map(c => c.id));
+        
         const newCards = cards.filter((c: any) => !existingCardIds.has(c.id));
         allNewCards.push(...newCards);
+        
+        console.log(`🔍 Debug: Cards novos neste lote: ${newCards.length}`);
+        if (newCards.length > 0) {
+          console.log(`🔍 Debug: Primeiros 3 cards novos:`, newCards.slice(0, 3).map(c => `${c.name} (${c.id})`));
+        }
         
         if (newCards.length === 0) break; // Não há mais cards novos
         
@@ -833,7 +844,44 @@ class TCGdexService {
         for (let i = 0; i < cardsData.length; i += batchSize) {
           const batch = cardsData.slice(i, i + batchSize);
           try {
-            await DatabaseService.updateCardsBatch(batch);
+            // Processar cada card individualmente para garantir dados válidos
+            const processedBatch = batch.map(card => {
+              // Garantir que sempre temos set e série válidos
+              let setId = card.set?.id || 'unknown';
+              let seriesId = card.set?.serie || card.set?.series || 'unknown';
+              
+              // Se não tem set definido, tentar inferir do ID do card
+              if (setId === 'unknown' && card.id) {
+                const parts = card.id.split('-');
+                if (parts.length >= 2) {
+                  setId = parts[0]; // bw1, base1, etc.
+                }
+              }
+              
+              // Se não tem série definida, inferir do set
+              if (seriesId === 'unknown' && setId !== 'unknown') {
+                seriesId = this.inferSeriesFromSetId(setId) || 'unknown';
+              }
+              
+              // Garantir que sempre temos uma série válida
+              if (!seriesId || seriesId === 'unknown') {
+                seriesId = this.inferSeriesFromSetId(setId) || 'unknown';
+              }
+              
+              // Garantir que sempre temos um set válido
+              if (!setId || setId === 'unknown') {
+                setId = 'unknown';
+              }
+              
+              return {
+                ...card,
+                set: setId,
+                series: seriesId,
+                localId: card.localId || this.extractLocalId(card.id)
+              };
+            });
+            
+            await DatabaseService.updateCardsBatch(processedBatch);
             stats.cards += batch.length;
             
             if (stats.cards % 1000 === 0) {

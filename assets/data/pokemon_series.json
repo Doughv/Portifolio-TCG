@@ -1,35 +1,43 @@
 [
   {
     "id": "base",
-    "name": "Coleção Básica"
+    "name": "Coleção Básica",
+    "logo": ""
   },
   {
     "id": "ex",
-    "name": "EX"
+    "name": "EX",
+    "logo": ""
   },
   {
     "id": "dp",
-    "name": "Diamante & Pérola"
+    "name": "Diamante & Pérola",
+    "logo": ""
   },
   {
     "id": "hgss",
-    "name": "HeartGold SoulSilver"
+    "name": "HeartGold SoulSilver",
+    "logo": ""
   },
   {
     "id": "col",
-    "name": "Chamado das Lendas"
+    "name": "Chamado das Lendas",
+    "logo": ""
   },
   {
     "id": "bw",
-    "name": "Black & White"
+    "name": "Black & White",
+    "logo": ""
   },
   {
     "id": "xy",
-    "name": "XY"
+    "name": "XY",
+    "logo": ""
   },
   {
     "id": "sm",
-    "name": "Sol e Lua"
+    "name": "Sol e Lua",
+    "logo": ""
   },
   {
     "id": "swsh",
@@ -43,6 +51,12 @@
   },
   {
     "id": "tcgp",
-    "name": "Pokémon Estampas Ilustradas Pocket"
+    "name": "Pokémon Estampas Ilustradas Pocket",
+    "logo": ""
+  },
+  {
+    "id": "me",
+    "name": "Megaevolução",
+    "logo": "https://assets.tcgdex.net/pt/me/me01/logo"
   }
 ]
