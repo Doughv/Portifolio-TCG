@@ -59,6 +59,83 @@ class TCGdexService {
       }
   }
 
+  // Verificar se os JSONs locais foram atualizados e precisam ser migrados
+  async checkIfJSONsNeedUpdate(): Promise<{ shouldUpdate: boolean; reason?: string; currentStats?: any; newStats?: any }> {
+    try {
+      console.log('🔍 Verificando se JSONs precisam ser atualizados...');
+      
+      // 1. Obter estatísticas atuais do banco
+      const currentDbStats = await DatabaseService.getStats();
+      console.log('📊 Dados atuais no banco:', currentDbStats);
+      
+      // 2. Obter estatísticas dos JSONs
+      const statsData = require('../data/stats.json');
+      const jsonStats = {
+        series: statsData.series || 0,
+        sets: statsData.sets || 0,
+        cards: statsData.cards || 0,
+        processedAt: statsData.processedAt
+      };
+      console.log('📦 Dados nos JSONs:', jsonStats);
+      
+      // 3. Verificar se é primeira instalação
+      if (currentDbStats.series === 0 && currentDbStats.sets === 0 && currentDbStats.cards === 0) {
+        return {
+          shouldUpdate: true,
+          reason: 'Primeira instalação - banco vazio',
+          currentStats: currentDbStats,
+          newStats: jsonStats
+        };
+      }
+      
+      // 4. Comparar quantidade de dados (principal indicador de atualização)
+      const hasMoreSeries = jsonStats.series > currentDbStats.series;
+      const hasMoreSets = jsonStats.sets > currentDbStats.sets;
+      const hasMoreCards = jsonStats.cards > currentDbStats.cards;
+      
+      if (hasMoreSeries || hasMoreSets || hasMoreCards) {
+        const changes = [];
+        if (hasMoreSeries) changes.push(`+${jsonStats.series - currentDbStats.series} séries`);
+        if (hasMoreSets) changes.push(`+${jsonStats.sets - currentDbStats.sets} sets`);
+        if (hasMoreCards) changes.push(`+${jsonStats.cards - currentDbStats.cards} cartas`);
+        
+        return {
+          shouldUpdate: true,
+          reason: `Novos dados detectados: ${changes.join(', ')}`,
+          currentStats: currentDbStats,
+          newStats: jsonStats
+        };
+      }
+      
+      // 5. Verificar se a data de processamento é mais recente (para atualizações de dados existentes)
+      const currentProcessedAt = await DatabaseService.getDataProcessedAt();
+      if (currentProcessedAt && jsonStats.processedAt && new Date(jsonStats.processedAt) > new Date(currentProcessedAt)) {
+        return {
+          shouldUpdate: true,
+          reason: `Dados reprocessados em ${jsonStats.processedAt}`,
+          currentStats: currentDbStats,
+          newStats: jsonStats
+        };
+      }
+      
+      console.log('✅ Dados estão atualizados');
+      return {
+        shouldUpdate: false,
+        reason: 'Dados já estão atualizados',
+        currentStats: currentDbStats,
+        newStats: jsonStats
+      };
+      
+    } catch (error) {
+      console.error('❌ Erro ao verificar JSONs:', error);
+      // Em caso de erro, não atualizar para evitar problemas
+      return {
+        shouldUpdate: false,
+        reason: `Erro na verificação: ${error}`
+      };
+    }
+  }
+
   // Verificar se há atualizações disponíveis na API
   async checkForUpdates(): Promise<{ hasUpdates: boolean; lastUpdate?: string; newSeries?: number; newSets?: number; newCards?: number }> {
     try {
@@ -927,6 +1004,20 @@ class TCGdexService {
         }
 
         console.log('Migração incremental dos JSONs concluída:', stats);
+
+        // Salvar estatísticas e data de processamento após migração bem-sucedida
+        try {
+          const statsData = require('../data/stats.json');
+          await DatabaseService.saveDataStats(statsData);
+          console.log('✅ Estatísticas dos dados salvas:', {
+            series: statsData.series,
+            sets: statsData.sets,
+            cards: statsData.cards,
+            processedAt: statsData.processedAt
+          });
+        } catch (error) {
+          console.error('❌ Erro ao salvar estatísticas dos dados:', error);
+        }
 
         return {
           success: true,

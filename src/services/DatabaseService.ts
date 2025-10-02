@@ -5,7 +5,16 @@ export interface PokemonCard {
   name: string;
   image: string;
   rarity: string;
-  set: string;
+  set: {
+    id: string;
+    name: string;
+    cardCount: {
+      official: number;
+      total: number;
+    };
+    symbol: string;
+    logo: string;
+  };
   series: string;
   price: number;
   lastUpdated: string;
@@ -99,10 +108,16 @@ class DatabaseService {
       this.db = await SQLite.openDatabaseAsync('pokemon_tcg.db');
       await this.createTables();
       
-      // Forçar migração das novas colunas
-      console.log('🔄 Executando migrações...');
-      await this.migrateAddLocalIdColumn();
-      await this.migrateAddExpandedColumns();
+      // Verificar se migrações já foram aplicadas
+      const migrationsApplied = await this.checkMigrationsApplied();
+      if (!migrationsApplied) {
+        console.log('🔄 Executando migrações...');
+        await this.migrateAddLocalIdColumn();
+        await this.migrateAddExpandedColumns();
+        await this.markMigrationsAsApplied();
+      } else {
+        console.log('✅ Migrações já aplicadas, pulando...');
+      }
       
       console.log('✅ Database initialized successfully');
     } catch (error) {
@@ -176,11 +191,7 @@ class DatabaseService {
       );
     `);
 
-    // Migração: Adicionar coluna local_id se não existir
-    await this.migrateAddLocalIdColumn();
-    
-    // Migração: Adicionar novas colunas expandidas
-    await this.migrateAddExpandedColumns();
+    // Migrações são executadas apenas no _doInitialize() para evitar duplicação
 
     // Índices para performance
     await this.db.execAsync(`
@@ -224,6 +235,126 @@ class DatabaseService {
         console.error(`❌ Erro ao adicionar coluna ${column.name}:`, error);
         // Continuar mesmo com erro para não quebrar a inicialização
       }
+    }
+  }
+
+  private async checkMigrationsApplied(): Promise<boolean> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    try {
+      // Verificar se existe uma tabela de controle de migrações
+      const result = await this.db.getAllAsync(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='migrations';
+      `);
+      
+      if (result.length === 0) {
+        // Criar tabela de migrações se não existir
+        await this.db.execAsync(`
+          CREATE TABLE migrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            migration_name TEXT UNIQUE,
+            applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        return false;
+      }
+      
+      // Verificar se as migrações específicas já foram aplicadas
+      const migrations = await this.db.getAllAsync(`
+        SELECT migration_name FROM migrations 
+        WHERE migration_name IN ('add_local_id_column', 'add_expanded_columns');
+      `);
+      
+      return migrations.length === 2; // Ambas migrações aplicadas
+    } catch (error) {
+      console.error('❌ Erro ao verificar migrações:', error);
+      return false; // Em caso de erro, executar migrações
+    }
+  }
+
+  private async markMigrationsAsApplied(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    try {
+      await this.db.execAsync(`
+        INSERT OR IGNORE INTO migrations (migration_name) VALUES 
+        ('add_local_id_column'),
+        ('add_expanded_columns');
+      `);
+      console.log('✅ Migrações marcadas como aplicadas');
+    } catch (error) {
+      console.error('❌ Erro ao marcar migrações:', error);
+    }
+  }
+
+  // Métodos para controle de estatísticas dos dados
+  async getDataProcessedAt(): Promise<string | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    try {
+      // Criar tabela de metadados se não existir
+      await this.db.execAsync(`
+        CREATE TABLE IF NOT EXISTS app_metadata (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      const result = await this.db.getAllAsync(`
+        SELECT value FROM app_metadata WHERE key = 'data_processed_at';
+      `);
+      
+      return result.length > 0 ? (result[0] as any).value : null;
+    } catch (error) {
+      console.error('❌ Erro ao obter data de processamento:', error);
+      return null;
+    }
+  }
+
+  async saveDataStats(statsData: any): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    try {
+      // Criar tabela de metadados se não existir
+      await this.db.execAsync(`
+        CREATE TABLE IF NOT EXISTS app_metadata (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      // Salvar data de processamento
+      if (statsData.processedAt) {
+        await this.db.runAsync(
+          `INSERT OR REPLACE INTO app_metadata (key, value, updated_at) 
+           VALUES (?, ?, CURRENT_TIMESTAMP)`,
+          ['data_processed_at', statsData.processedAt]
+        );
+      }
+      
+      // Salvar estatísticas como JSON para referência futura se necessário
+      await this.db.runAsync(
+        `INSERT OR REPLACE INTO app_metadata (key, value, updated_at) 
+         VALUES (?, ?, CURRENT_TIMESTAMP)`,
+        ['last_json_stats', JSON.stringify({
+          series: statsData.series || 0,
+          sets: statsData.sets || 0,
+          cards: statsData.cards || 0,
+          processedAt: statsData.processedAt
+        })]
+      );
+      
+      console.log('✅ Estatísticas dos dados salvas:', {
+        series: statsData.series,
+        sets: statsData.sets,
+        cards: statsData.cards,
+        processedAt: statsData.processedAt
+      });
+    } catch (error) {
+      console.error('❌ Erro ao salvar estatísticas dos dados:', error);
+      throw error;
     }
   }
 
@@ -322,7 +453,7 @@ class DatabaseService {
         card.name,
         card.image,
         card.rarity,
-        card.set || 'unknown',
+        typeof card.set === 'string' ? card.set : card.set?.id || 'unknown',
         card.series || 'unknown',
         card.price,
         card.hp || null,
@@ -349,7 +480,11 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
     
     const result = await this.db.getAllAsync(
-      'SELECT * FROM cards WHERE set_id = ? ORDER BY name ASC',
+      `SELECT c.*, s.name as set_name, s.total_cards, s.symbol, s.logo 
+       FROM cards c 
+       LEFT JOIN sets s ON c.set_id = s.id 
+       WHERE c.set_id = ? 
+       ORDER BY c.name ASC`,
       [setId]
     );
     
@@ -358,7 +493,16 @@ class DatabaseService {
       name: row.name as string,
       image: row.image as string,
       rarity: row.rarity as string,
-      set: row.set_id as string,
+      set: {
+        id: row.set_id as string,
+        name: row.set_name as string,
+        cardCount: {
+          official: row.total_cards as number,
+          total: row.total_cards as number
+        },
+        symbol: row.symbol as string,
+        logo: row.logo as string
+      },
       series: row.series_id as string,
       price: row.price as number,
       lastUpdated: row.last_updated as string,
@@ -385,7 +529,11 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
     
     const result = await this.db.getAllAsync(
-      'SELECT * FROM cards WHERE name LIKE ? ORDER BY name ASC LIMIT 100',
+      `SELECT c.*, s.name as set_name, s.total_cards, s.symbol, s.logo 
+       FROM cards c 
+       LEFT JOIN sets s ON c.set_id = s.id 
+       WHERE c.name LIKE ? 
+       ORDER BY c.name ASC LIMIT 100`,
       [`%${query}%`]
     );
     
@@ -394,7 +542,16 @@ class DatabaseService {
       name: row.name as string,
       image: row.image as string,
       rarity: row.rarity as string,
-      set: row.set_id as string,
+      set: {
+        id: row.set_id as string,
+        name: row.set_name as string,
+        cardCount: {
+          official: row.total_cards as number,
+          total: row.total_cards as number
+        },
+        symbol: row.symbol as string,
+        logo: row.logo as string
+      },
       series: row.series_id as string,
       price: row.price as number,
       lastUpdated: row.last_updated as string,
@@ -467,16 +624,27 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
     
     const result = await this.db.getAllAsync(
-      'SELECT * FROM cards ORDER BY name ASC'
+      `SELECT c.*, s.name as set_name, s.total_cards, s.symbol, s.logo 
+       FROM cards c 
+       LEFT JOIN sets s ON c.set_id = s.id 
+       ORDER BY c.name ASC`
     );
-    
     
     return result.map((row: any) => ({
       id: row.id as string,
       name: row.name as string,
       image: row.image as string,
       rarity: row.rarity as string,
-      set: row.set_id as string,
+      set: {
+        id: row.set_id as string,
+        name: row.set_name as string,
+        cardCount: {
+          official: row.total_cards as number,
+          total: row.total_cards as number
+        },
+        symbol: row.symbol as string,
+        logo: row.logo as string
+      },
       series: row.series_id as string,
       price: row.price as number,
       lastUpdated: row.last_updated as string,

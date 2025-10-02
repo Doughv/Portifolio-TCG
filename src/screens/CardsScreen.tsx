@@ -190,7 +190,9 @@ const CardItem = ({ card, setId, cardsLength, onPress }: {
             </Text>
             <View style={styles.cardIdContainer}>
               <Text style={styles.cardId}>
-                {card.localId ? `${card.localId.padStart(3, '0')}/${cardsLength}` : '???/???'}
+                {card.localId && card.set?.cardCount?.official ? 
+                  `${card.localId.padStart(3, '0')}/${card.set.cardCount.official.toString().padStart(3, '0')}` : 
+                  '???/???'}
               </Text>
             </View>
           </View>
@@ -205,12 +207,20 @@ const CardItem = ({ card, setId, cardsLength, onPress }: {
             </View>
           )}
           
-          {/* Espaçador para empurrar raridade para a direita */}
+          {/* Espaçador flexível */}
           <View style={styles.spacer} />
           
-          {/* Raridade */}
+          {/* Raridade - responsiva */}
           <View style={[styles.rarityBadge, { backgroundColor: getRarityColor(card.rarity) }]}>
-            <Text style={styles.rarityText}>{card.rarity}</Text>
+            <Text 
+              style={styles.rarityText} 
+              numberOfLines={1} 
+              adjustsFontSizeToFit 
+              minimumFontScale={0.7}
+              ellipsizeMode="tail"
+            >
+              {card.rarity}
+            </Text>
           </View>
         </View>
       </View>
@@ -665,6 +675,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
   },
   spacer: {
     flex: 1,
@@ -697,8 +708,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     minWidth: 60,
+    maxWidth: 120, // Limita o tamanho máximo
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1, // Permite encolher se necessário
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

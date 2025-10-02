@@ -9,10 +9,11 @@ class LogoService {
   private static instance: LogoService;
   private logoCache: LogoCache = {};
   private cacheDirectory: string;
+  private isInitialized: boolean = false;
 
   constructor() {
     this.cacheDirectory = `${FileSystem.documentDirectory}logos/`;
-    this.initializeCache();
+    // Não inicializar automaticamente - fazer lazy loading
   }
 
   static getInstance(): LogoService {
@@ -22,7 +23,9 @@ class LogoService {
     return LogoService.instance;
   }
 
-  private async initializeCache() {
+  private async ensureInitialized() {
+    if (this.isInitialized) return;
+    
     try {
       // Criar diretório de logos se não existir
       const dirInfo = await FileSystem.getInfoAsync(this.cacheDirectory);
@@ -37,8 +40,11 @@ class LogoService {
         this.logoCache = JSON.parse(cachedLogos);
         console.log('📋 Cache de logos carregado:', Object.keys(this.logoCache).length, 'logos');
       }
+      
+      this.isInitialized = true;
     } catch (error) {
       console.error('❌ Erro ao inicializar cache de logos:', error);
+      this.isInitialized = true; // Marcar como inicializado mesmo com erro
     }
   }
 
@@ -54,6 +60,8 @@ class LogoService {
    * Verifica se o logo está em cache local
    */
   async isLogoCached(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    
     const localPath = this.logoCache[id];
     if (!localPath) return false;
 
@@ -68,7 +76,8 @@ class LogoService {
   /**
    * Obtém o caminho local do logo (se existir)
    */
-  getLocalLogoPath(id: string): string | null {
+  async getLocalLogoPath(id: string): Promise<string | null> {
+    await this.ensureInitialized();
     return this.logoCache[id] || null;
   }
 
@@ -76,6 +85,8 @@ class LogoService {
    * Baixa e salva um logo da URL fornecida
    */
   async downloadLogo(id: string, logoUrl: string): Promise<string | null> {
+    await this.ensureInitialized();
+    
     try {
       console.log(`🔽 Iniciando download de logo para ${id}`);
       console.log(`🔗 URL do logo:`, logoUrl);
@@ -119,6 +130,8 @@ class LogoService {
    * Obtém o logo de uma série com cache permanente
    */
   async getSeriesLogo(seriesId: string, logoUrl?: string): Promise<string | null> {
+    await this.ensureInitialized();
+    
     // Verificar se já está em cache
     if (this.logoCache[seriesId]) {
       console.log(`💾 Logo de série em cache para ${seriesId}:`, this.logoCache[seriesId]);
@@ -152,6 +165,8 @@ class LogoService {
    * Obtém o logo de um set com cache permanente
    */
   async getSetLogo(setId: string, logoUrl?: string): Promise<string | null> {
+    await this.ensureInitialized();
+    
     // Verificar se já está em cache
     if (this.logoCache[setId]) {
       console.log(`💾 Logo em cache para ${setId}:`, this.logoCache[setId]);
@@ -185,6 +200,8 @@ class LogoService {
    * Limpa o cache de logos
    */
   async clearCache(): Promise<void> {
+    await this.ensureInitialized();
+    
     try {
       // Remover arquivos do diretório
       const dirInfo = await FileSystem.getInfoAsync(this.cacheDirectory);
@@ -211,6 +228,8 @@ class LogoService {
     totalSizeMB: number;
     cacheDirectory: string;
   }> {
+    await this.ensureInitialized();
+    
     try {
       const dirInfo = await FileSystem.getInfoAsync(this.cacheDirectory);
       if (!dirInfo.exists) {

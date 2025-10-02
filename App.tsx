@@ -51,11 +51,13 @@ export default function App() {
       await FilterService.loadSettings('pt');
       console.log('App configurado para português brasileiro');
       
-      // 3. Verificar se há dados no banco, se não, migrar dos JSONs
+      // 3. Verificar se há dados no banco e se precisam ser atualizados
       setLoadingMessage('🔍 Verificando dados existentes...');
       setLoadingProgress(30);
       const stats = await DatabaseService.getStats();
+      
       if (stats.series === 0 && stats.sets === 0 && stats.cards === 0) {
+        // Banco vazio - migração inicial
         console.log('No data in database, migrating from JSONs...');
         setLoadingMessage('📦 Abrindo os boosters...');
         setLoadingProgress(40);
@@ -68,9 +70,32 @@ export default function App() {
           console.error('Migration failed:', migrationResult.message);
         }
       } else {
+        // Banco tem dados - verificar se precisa atualizar
         console.log('Data already exists in database:', stats);
-        setLoadingMessage('✅ Dados encontrados!');
-        setLoadingProgress(80);
+        setLoadingMessage('🔄 Verificando atualizações...');
+        setLoadingProgress(40);
+        
+        const needsUpdate = await TCGdexService.checkIfJSONsNeedUpdate();
+        if (needsUpdate.shouldUpdate) {
+          console.log('JSONs have been updated, migrating new data...');
+          setLoadingMessage('📦 Atualizando dados...');
+          setLoadingProgress(50);
+          
+          const updateResult = await TCGdexService.migrateFromJSONs();
+          if (updateResult.success) {
+            console.log('Update successful:', updateResult.message);
+            setLoadingMessage('✅ Dados atualizados!');
+            setLoadingProgress(80);
+          } else {
+            console.error('Update failed:', updateResult.message);
+            setLoadingMessage('✅ Dados encontrados!');
+            setLoadingProgress(80);
+          }
+        } else {
+          console.log('Data is up to date');
+          setLoadingMessage('✅ Dados atualizados!');
+          setLoadingProgress(80);
+        }
       }
       
       setLoadingMessage('🎉 Preparando o Portfólio TCG...');
