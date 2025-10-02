@@ -32,9 +32,13 @@ export default function LanguageConfigScreen() {
   const [selectedExpansions, setSelectedExpansions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingExpansions, setLoadingExpansions] = useState(false);
+  const [allCards, setAllCards] = useState<any[]>([]);
+  const [setsWithCards, setSetsWithCards] = useState<Set<string>>(new Set());
+  const [cacheLoaded, setCacheLoaded] = useState(false);
 
   useEffect(() => {
     loadSavedSettings();
+    loadCardsCache(); // Carregar cache dos cards uma vez
   }, []);
 
   useFocusEffect(
@@ -43,6 +47,50 @@ export default function LanguageConfigScreen() {
       loadSavedSettings();
     }, [])
   );
+
+  const loadCardsCache = async () => {
+    try {
+      // Verificar se já temos cache salvo
+      const cachedSets = await AsyncStorage.getItem('setsWithCards');
+      if (cachedSets) {
+        const setsArray = JSON.parse(cachedSets);
+        setSetsWithCards(new Set(setsArray));
+        setCacheLoaded(true);
+        console.log(`✅ Cache restaurado: ${setsArray.length} sets com cartas`);
+        return;
+      }
+
+      console.log('🔄 Carregando cache dos cards pela primeira vez...');
+      const allCardsData = await DatabaseService.getAllCards();
+      const setsWithCardsSet = new Set<string>();
+      
+      allCardsData.forEach(card => {
+        if (card.set) {
+          setsWithCardsSet.add(card.set);
+        }
+      });
+      
+      // Salvar cache para próximas vezes
+      await AsyncStorage.setItem('setsWithCards', JSON.stringify(Array.from(setsWithCardsSet)));
+      
+      setAllCards(allCardsData);
+      setSetsWithCards(setsWithCardsSet);
+      setCacheLoaded(true);
+      console.log(`✅ Cache carregado e salvo: ${allCardsData.length} cards, ${setsWithCardsSet.size} sets com cartas`);
+    } catch (error) {
+      console.error('❌ Erro ao carregar cache dos cards:', error);
+    }
+  };
+
+  // Função para limpar cache quando necessário (ex: após atualização do banco)
+  const clearCardsCache = async () => {
+    try {
+      await AsyncStorage.removeItem('setsWithCards');
+      console.log('🗑️ Cache de sets limpo');
+    } catch (error) {
+      console.error('❌ Erro ao limpar cache:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedLanguage) {
@@ -104,11 +152,9 @@ export default function LanguageConfigScreen() {
       setSeries(seriesData);
       console.log(`Todas as séries disponíveis no banco para configuração:`, seriesData.length);
       
-      // Se não há séries selecionadas, selecionar TODAS por padrão
+      // Se não há séries selecionadas, deixar vazio (usuário deve escolher)
       if (selectedSeries.length === 0) {
-        const allSeriesIds = seriesData.map(series => series.id);
-        setSelectedSeries(allSeriesIds);
-        console.log('Selecionando todas as séries por padrão:', allSeriesIds.length);
+        console.log('Nenhuma série selecionada, usuário deve escolher');
       }
     } catch (error) {
       console.error('Erro ao carregar séries:', error);
@@ -123,6 +169,8 @@ export default function LanguageConfigScreen() {
     try {
       const expansionsData: {[key: string]: PokemonSet[]} = {};
       
+      console.log(`📊 Usando cache: ${setsWithCards.size} sets com cartas`);
+      
       for (const seriesId of selectedSeries) {
         try {
           console.log(`Carregando expansões da série ${seriesId} do banco...`);
@@ -130,8 +178,11 @@ export default function LanguageConfigScreen() {
           // Buscar APENAS do banco (sem SDK)
           const seriesExpansions = await DatabaseService.getSetsBySeries(seriesId);
           
-          expansionsData[seriesId] = seriesExpansions;
-          console.log(`✅ ${seriesExpansions.length} expansões encontradas no banco para ${seriesId}`);
+          // Filtrar apenas os sets que têm cartas
+          const expansionsWithCards = seriesExpansions.filter(set => setsWithCards.has(set.id));
+          
+          expansionsData[seriesId] = expansionsWithCards;
+          console.log(`✅ ${expansionsWithCards.length} expansões com cartas encontradas para ${seriesId}`);
         } catch (error) {
           console.error(`❌ Erro ao carregar expansões da série ${seriesId}:`, error);
           expansionsData[seriesId] = [];
@@ -139,18 +190,11 @@ export default function LanguageConfigScreen() {
       }
       
       setExpansions(expansionsData);
-      console.log('Todas as expansões carregadas do banco:', Object.keys(expansionsData).length);
+      console.log('Todas as expansões com cartas carregadas do banco:', Object.keys(expansionsData).length);
       
-      // Se não há expansões selecionadas, selecionar TODAS por padrão
+      // Se não há expansões selecionadas, deixar vazio (usuário deve escolher)
       if (selectedExpansions.length === 0) {
-        const allExpansionIds: string[] = [];
-        Object.values(expansionsData).forEach(expansions => {
-          expansions.forEach(expansion => {
-            allExpansionIds.push(expansion.id);
-          });
-        });
-        setSelectedExpansions(allExpansionIds);
-        console.log('Selecionando todas as expansões por padrão:', allExpansionIds.length);
+        console.log('Nenhuma expansão selecionada, usuário deve escolher');
       }
     } catch (error) {
       console.error('Erro ao carregar expansões:', error);
@@ -624,8 +668,18 @@ ${dbSeries.length > 0 ? '✅ Há séries no banco' : '❌ Nenhuma série no banc
   };
 
   const selectAllSeries = () => {
-    const allSeriesIds = series.map(s => s.id);
-    setSelectedSeries(allSeriesIds);
+    // Usar a mesma lógica do sortedSeries para identificar séries disponíveis
+    const availableSeriesIds = series
+      .filter(s => {
+        // Uma série está disponível se tem pelo menos um set com cartas
+        return Array.from(setsWithCards).some(setId => setId.startsWith(s.id));
+      })
+      .map(s => s.id);
+    
+    console.log('📋 Séries disponíveis encontradas:', availableSeriesIds);
+    console.log('📋 Total de séries:', series.length);
+    console.log('📋 Sets com cartas:', Array.from(setsWithCards));
+    setSelectedSeries(availableSeriesIds);
   };
 
   const selectNoneSeries = () => {
@@ -635,38 +689,55 @@ ${dbSeries.length > 0 ? '✅ Há séries no banco' : '❌ Nenhuma série no banc
   };
 
   const selectAllExpansions = () => {
-    const allExpansionIds: string[] = [];
+    // Selecionar apenas expansões que têm cartas
+    const availableExpansionIds: string[] = [];
     Object.values(expansions).forEach(seriesExpansions => {
       seriesExpansions.forEach(expansion => {
-        allExpansionIds.push(expansion.id);
+        // Só adicionar se a expansão tem cartas
+        if (setsWithCards.has(expansion.id)) {
+          availableExpansionIds.push(expansion.id);
+        }
       });
     });
-    setSelectedExpansions(allExpansionIds);
+    
+    console.log('📋 Selecionando expansões disponíveis:', availableExpansionIds);
+    setSelectedExpansions(availableExpansionIds);
   };
 
   const selectNoneExpansions = () => {
     setSelectedExpansions([]);
   };
 
-  const renderSeriesItem = ({ item }: { item: PokemonSeries }) => (
-    <TouchableOpacity
-      style={[
-        styles.gridItem,
-        selectedSeries.includes(item.id) && styles.selectedGridItem
-      ]}
-      onPress={() => toggleSeries(item.id)}
-    >
-      <Text style={[
-        styles.gridItemText,
-        selectedSeries.includes(item.id) && styles.selectedGridItemText
-      ]}>
-        {item.name}
-      </Text>
-      {selectedSeries.includes(item.id) && (
-        <Text style={styles.checkmark}>✓</Text>
-      )}
-    </TouchableOpacity>
-  );
+  const renderSeriesItem = ({ item }: { item: PokemonSeries }) => {
+    // Verificar se a série tem pelo menos um set com cartas
+    const hasCardsInSeries = Array.from(setsWithCards).some(setId => setId.startsWith(item.id));
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.gridItem,
+          !hasCardsInSeries && styles.gridItemDisabled,
+          selectedSeries.includes(item.id) && styles.selectedGridItem
+        ]}
+        onPress={() => hasCardsInSeries ? toggleSeries(item.id) : null}
+        disabled={!hasCardsInSeries}
+      >
+        <Text style={[
+          styles.gridItemText,
+          !hasCardsInSeries && styles.gridItemTextDisabled,
+          selectedSeries.includes(item.id) && styles.selectedGridItemText
+        ]}>
+          {item.name}
+        </Text>
+        {!hasCardsInSeries && (
+          <Text style={styles.unavailableText}>Indisponível</Text>
+        )}
+        {selectedSeries.includes(item.id) && hasCardsInSeries && (
+          <Text style={styles.checkmark}>✓</Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderExpansionItem = ({ item }: { item: PokemonSet & { seriesId: string } }) => (
     <TouchableOpacity
@@ -696,6 +767,20 @@ ${dbSeries.length > 0 ? '✅ Há séries no banco' : '❌ Nenhuma série no banc
         allExpansions.push({ ...expansion, seriesId });
       });
     }
+  });
+
+  // Ordenar séries: disponíveis primeiro, indisponíveis por último
+  const sortedSeries = [...series].sort((a, b) => {
+    const aHasCards = Array.from(setsWithCards).some(setId => setId.startsWith(a.id));
+    const bHasCards = Array.from(setsWithCards).some(setId => setId.startsWith(b.id));
+    
+    // Se ambas têm cartas ou ambas não têm, manter ordem original
+    if (aHasCards === bHasCards) {
+      return 0;
+    }
+    
+    // Séries com cartas primeiro (retorna -1 para 'a' vir antes)
+    return aHasCards ? -1 : 1;
   });
 
   return (
@@ -744,14 +829,14 @@ ${dbSeries.length > 0 ? '✅ Há séries no banco' : '❌ Nenhuma série no banc
             Escolha as coleções que deseja visualizar
           </Text>
           
-          {loading ? (
+          {loading || !cacheLoaded ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#007AFF" />
               <Text style={styles.loadingText}>Carregando coleções...</Text>
             </View>
           ) : (
             <FlatList
-              data={series}
+              data={sortedSeries}
               renderItem={renderSeriesItem}
               keyExtractor={(item) => `series-${item.id}`}
               numColumns={2}
@@ -1001,5 +1086,18 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: 'bold',
     marginTop: 4,
+  },
+  gridItemDisabled: {
+    backgroundColor: '#f5f5f5',
+    opacity: 0.6,
+  },
+  gridItemTextDisabled: {
+    color: '#999',
+  },
+  unavailableText: {
+    fontSize: 12,
+    color: '#ff6b6b',
+    fontWeight: 'bold',
+    marginTop: 2,
   },
 });

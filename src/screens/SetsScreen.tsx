@@ -7,21 +7,30 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DatabaseService, { PokemonSet } from '../services/DatabaseService';
 import FilterService from '../services/FilterService';
 import TCGdexService from '../services/TCGdexService';
 import ImageDownloadService from '../services/ImageDownloadService';
+import LogoService from '../services/LogoService';
+
+const { width } = Dimensions.get('window');
+const itemWidth = (width - 48) / 2; // 2 colunas com padding
+
+interface SetWithLogo extends PokemonSet {
+  logoPath?: string | null;
+}
 
 export default function SetsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { seriesId } = route.params as { seriesId: string };
 
-  const [sets, setSets] = useState<PokemonSet[]>([]);
+  const [sets, setSets] = useState<SetWithLogo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     loadSets();
@@ -32,8 +41,15 @@ export default function SetsScreen() {
       setLoading(true);
       console.log(`Carregando sets filtrados da série ${seriesId} do banco de dados...`);
       const setsData = await FilterService.getFilteredSetsBySeries(seriesId);
-      setSets(setsData);
-      console.log(`${setsData.length} sets carregados (com filtros aplicados)`);
+      
+      // Carregar sets primeiro sem logos (para não bloquear a UI)
+      const setsWithoutLogos = setsData.map(set => ({ ...set, logoPath: null }));
+      setSets(setsWithoutLogos);
+      console.log(`${setsWithoutLogos.length} sets carregados (sem logos ainda)`);
+      
+      // Carregar logos em background de forma assíncrona
+      loadLogosInBackground(setsData);
+      
     } catch (error) {
       console.error('Error loading filtered sets:', error);
       Alert.alert('Erro', 'Não foi possível carregar os sets');
@@ -42,74 +58,66 @@ export default function SetsScreen() {
     }
   };
 
-  const handleUpdateFromAPI = async () => {
-    try {
-      setUpdating(true);
-      
-      Alert.alert(
-        'Atualizar da API',
-        'Isso verificará atualizações disponíveis na API e baixará dados novos. Deseja continuar?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Atualizar', 
-            onPress: async () => {
-              try {
-                // Verificar atualizações
-                const updateCheck = await TCGdexService.checkForUpdates();
-                
-                if (updateCheck.hasUpdates) {
-                  Alert.alert(
-                    'Atualizações Disponíveis',
-                    `Há atualizações disponíveis:\n• ${updateCheck.newSeries || 0} séries novas\n• ${updateCheck.newSets || 0} sets novos\n• ${updateCheck.newCards || 0} cartas novas\n\nDeseja sincronizar agora?`,
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { 
-                        text: 'Sincronizar', 
-                        onPress: async () => {
-                          const result = await TCGdexService.syncUpdatesOnly();
-                          if (result.success) {
-                            Alert.alert('Sucesso', result.message);
-                            await loadSets(); // Recarregar dados
-                          } else {
-                            Alert.alert('Erro', result.message);
-                          }
-                        }
-                      }
-                    ]
-                  );
-                } else {
-                  Alert.alert('Atualizado', 'Todos os dados estão atualizados!');
-                }
-              } catch (error) {
-                console.error('Erro na verificação:', error);
-                Alert.alert('Erro', 'Não foi possível verificar atualizações');
-              } finally {
-                setUpdating(false);
-              }
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Erro ao iniciar verificação:', error);
-      setUpdating(false);
-    }
+  const loadLogosInBackground = async (setsData: any[]) => {
+    console.log('🔽 Iniciando carregamento de logos em background...');
+    
+    // Processar todos os logos de uma vez (agora é rápido com cache)
+    const setsWithLogos = await Promise.all(
+      setsData.map(async (set) => {
+        try {
+          // Usar logo primeiro, depois symbol como fallback
+          const logoUrl = set.logo || set.symbol || undefined;
+          const logoPath = await LogoService.getSetLogo(set.id, logoUrl);
+          
+          console.log(`✅ Logo processado para ${set.id}:`, logoPath ? 'sucesso' : 'não encontrado');
+          return { ...set, logoPath };
+        } catch (error) {
+          console.error(`❌ Erro ao processar logo para ${set.id}:`, error);
+          return { ...set, logoPath: null };
+        }
+      })
+    );
+    
+    // Atualizar todos os sets de uma vez
+    setSets(setsWithLogos);
+    console.log('🎯 Todos os logos processados e atualizados!');
   };
 
   const handleSetPress = (setId: string) => {
-    navigation.navigate('Cards' as never, { setId } as never);
+    (navigation as any).navigate('Cards', { setId });
   };
 
-  const renderSetItem = ({ item }: { item: PokemonSet }) => (
+  const renderSetItem = ({ item }: { item: SetWithLogo }) => (
     <TouchableOpacity
-      style={styles.setItem}
+      style={[styles.setItem, { width: itemWidth }]}
       onPress={() => handleSetPress(item.id)}
     >
-      <Text style={styles.setName}>{item.name}</Text>
-      <Text style={styles.setInfo}>
-        {item.totalCards} cards
-      </Text>
+      <View style={styles.logoContainer}>
+        {item.logoPath ? (
+          <Image 
+            source={{ uri: item.logoPath }} 
+            style={styles.setLogo}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.placeholderLogo}>
+            <Text style={styles.placeholderText}>⚡</Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.setInfo}>
+        <View style={styles.nameWithSymbol}>
+          <Text style={styles.setName} numberOfLines={2}>{item.name}</Text>
+          {item.symbol && (
+            <Image 
+              source={{ uri: item.symbol + '.webp' }} 
+              style={styles.symbolIcon}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+        <Text style={styles.setCards}>{item.totalCards} cartas</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -126,22 +134,10 @@ export default function SetsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Expansões</Text>
           <Text style={styles.subtitle}>
-            {sets.length} expansões disponíveis
+            {sets.length} disponíveis
           </Text>
         </View>
-        <TouchableOpacity 
-          style={[styles.updateButton, updating && styles.updateButtonDisabled]}
-          onPress={handleUpdateFromAPI}
-          disabled={updating}
-        >
-          {updating ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.updateButtonText}>Atualizar</Text>
-          )}
-        </TouchableOpacity>
       </View>
       
       <FlatList
@@ -150,6 +146,7 @@ export default function SetsScreen() {
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.gridContainer}
+        columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -191,46 +188,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-  },
-  updateButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  updateButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  updateButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   listContainer: {
     padding: 16,
   },
   gridContainer: {
     padding: 16,
-    gap: 12,
+  },
+  row: {
+    justifyContent: 'space-between',
   },
   setItem: {
-    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 6,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -239,18 +213,61 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    minHeight: 80,
-    justifyContent: 'center',
+    alignItems: 'center',
   },
-  setName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+  logoContainer: {
+    width: '100%',
+    height: 100,
+    marginBottom: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  setLogo: {
+    width: '80%',
+    height: '80%',
+  },
+  placeholderLogo: {
+    width: '80%',
+    height: '80%',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    fontSize: 28,
+    opacity: 0.5,
   },
   setInfo: {
-    fontSize: 14,
+    width: '100%',
+    alignItems: 'center',
+  },
+  nameWithSymbol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    width: '100%',
+  },
+  setName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    flex: 1,
+  },
+  symbolIcon: {
+    width: 20,
+    height: 20,
+    marginLeft: 6,
+  },
+  setCards: {
+    fontSize: 11,
     color: '#666',
+    textAlign: 'center',
   },
 });
 

@@ -277,8 +277,21 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
                   return;
                 }
 
-                addLog('🔄 Chamando TCGdexService.migrateFromJSONs()...');
+                addLog('🔄 Iniciando migração...');
+                setSyncProgress(20);
+                
+                // Simular progresso durante a migração
+                const progressInterval = setInterval(() => {
+                  if (cancelTokenRef.current) {
+                    clearInterval(progressInterval);
+                    return;
+                  }
+                  setSyncProgress(prev => Math.min(prev + 5, 90));
+                }, 1000);
+
                 const result = await TCGdexService.migrateFromJSONs();
+                
+                clearInterval(progressInterval);
                 
                 // Verificar cancelamento após migração
                 if (cancelTokenRef.current) {
@@ -370,6 +383,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
     );
   };
 
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content}>
@@ -447,24 +461,25 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
           </TouchableOpacity>
         </View>
 
+
         {/* Container de Estatísticas */}
         {databaseStats && (
           <View style={styles.statsContainer}>
-            <Text style={styles.statsTitle}>📊 Estatísticas do Banco</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{databaseStats.series}</Text>
-                <Text style={styles.statLabel}>Séries</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{databaseStats.sets}</Text>
-                <Text style={styles.statLabel}>Sets</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{databaseStats.cards.toLocaleString()}</Text>
-                <Text style={styles.statLabel}>Cartas</Text>
-              </View>
+            <View style={styles.statsHeader}>
+              <Text style={styles.statsTitle}>Estatísticas do Banco</Text>
+              <TouchableOpacity
+                style={styles.infoButton}
+                onPress={() => Alert.alert(
+                  'Informações Detalhadas',
+                  `Séries: ${databaseStats.series}\nSets: ${databaseStats.sets}\nCartas: ${databaseStats.cards.toLocaleString()}\n\nÚltima atualização: ${lastUpdate || 'Nunca'}`
+                )}
+              >
+                <Text style={styles.infoButtonText}>?</Text>
+              </TouchableOpacity>
             </View>
+            <Text style={styles.statsLine}>
+              {databaseStats.series} séries • {databaseStats.sets} sets • {databaseStats.cards.toLocaleString()} cartas
+            </Text>
           </View>
         )}
 
@@ -485,7 +500,7 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
                   disabled={isCancelling}
                 >
                   <Text style={styles.cancelButtonText}>
-                    {isCancelling ? '🛑 Cancelando...' : '❌ Cancelar'}
+                    {isCancelling ? 'Cancelando...' : 'Cancelar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -499,13 +514,8 @@ export default function UpdateScreen({ navigation }: UpdateScreenProps) {
               />
             </View>
             <Text style={styles.progressText}>
-              {syncStatus || 'Executando em segundo plano...'}
+              {syncStatus || 'Processando...'}
             </Text>
-            {isBackgroundRunning && (
-              <Text style={styles.backgroundNote}>
-                💡 Você pode sair desta tela - a operação continuará em segundo plano
-              </Text>
-            )}
           </View>
         )}
 
@@ -577,32 +587,40 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 12,
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    flexWrap: 'nowrap',
   },
   statsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-    textAlign: 'center',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 5,
-  },
-  statLabel: {
     fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    flexWrap: 'nowrap',
+  },
+  infoButton: {
+    backgroundColor: '#007AFF',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  infoButtonText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  statsLine: {
+    fontSize: 12,
     color: '#666',
   },
   buttonText: {
@@ -611,16 +629,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   progressContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
     backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 8,
+    padding: 8,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   progressHeaderRight: {
     flexDirection: 'row',
@@ -628,12 +646,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   progressTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
   },
   progressPercent: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#007AFF',
   },
@@ -649,19 +667,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   progressBar: {
-    height: 8,
+    height: 6,
     backgroundColor: '#E5E5E7',
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#007AFF',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
     textAlign: 'center',
   },

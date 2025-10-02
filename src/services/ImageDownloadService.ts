@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TCGdexService from './TCGdexService';
 
@@ -190,6 +190,59 @@ class ImageDownloadService {
       console.log('Cache de imagens limpo');
     } catch (error) {
       console.error('Erro ao limpar cache de imagens:', error);
+    }
+  }
+
+  // Obter estatísticas do cache de imagens
+  async getCacheStats(): Promise<{
+    totalImages: number;
+    totalSizeMB: number;
+    cacheDirectory: string;
+    imagesBySet: { [setId: string]: { count: number; sizeMB: number } };
+  }> {
+    try {
+      const downloadedImages = await this.getDownloadedImages();
+      const totalImages = Object.keys(downloadedImages).length;
+      
+      let totalSizeBytes = 0;
+      const imagesBySet: { [setId: string]: { count: number; sizeMB: number } } = {};
+      
+      // Calcular tamanho de cada imagem
+      for (const [cardId, imageInfo] of Object.entries(downloadedImages)) {
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(imageInfo.localPath);
+          if (fileInfo.exists && fileInfo.size) {
+            totalSizeBytes += fileInfo.size;
+            
+            const setId = imageInfo.setId;
+            if (!imagesBySet[setId]) {
+              imagesBySet[setId] = { count: 0, sizeMB: 0 };
+            }
+            imagesBySet[setId].count++;
+            imagesBySet[setId].sizeMB += fileInfo.size / (1024 * 1024);
+          }
+        } catch (error) {
+          console.log(`Erro ao obter info do arquivo ${imageInfo.localPath}:`, error);
+        }
+      }
+      
+      const totalSizeMB = totalSizeBytes / (1024 * 1024);
+      const cacheDirectory = `${FileSystem.documentDirectory}imagens_pokemon`;
+      
+      return {
+        totalImages,
+        totalSizeMB: Math.round(totalSizeMB * 100) / 100, // Arredondar para 2 casas decimais
+        cacheDirectory,
+        imagesBySet
+      };
+    } catch (error) {
+      console.error('Erro ao obter estatísticas do cache:', error);
+      return {
+        totalImages: 0,
+        totalSizeMB: 0,
+        cacheDirectory: '',
+        imagesBySet: {}
+      };
     }
   }
 }

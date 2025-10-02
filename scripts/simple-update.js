@@ -145,9 +145,11 @@ class SimpleUpdater {
         const seriesId = set.serie || set.series;
         const setId = set.id;
         
-        // Extrair prefixo do ID do set
+        // Extrair prefixo do ID do set de forma mais precisa
         const prefix = setId.split(/[-_]/)[0]; // bw1, xy4, sv07, etc.
-        const basePrefix = prefix.replace(/\d+$/, ''); // bw, xy, sv, etc.
+        
+        // Para sets como sv03.5, sv04.5, etc., usar apenas o prefixo principal
+        const basePrefix = prefix.replace(/\.\d+$/, '').replace(/\d+$/, ''); // sv, bw, xy, etc.
         
         if (!patterns.has(basePrefix)) {
           patterns.set(basePrefix, seriesId);
@@ -162,16 +164,18 @@ class SimpleUpdater {
   inferFromPatterns(setId, patterns) {
     // Extrair prefixo base do ID do set
     const prefix = setId.split(/[-_]/)[0];
-    const basePrefix = prefix.replace(/\d+$/, '');
     
-    // Procurar padrão correspondente
+    // Para sets como sv03.5, sv04.5, etc., usar apenas o prefixo principal
+    const basePrefix = prefix.replace(/\.\d+$/, '').replace(/\d+$/, '');
+    
+    // Procurar padrão correspondente exato
     for (const [pattern, seriesId] of patterns.entries()) {
-      if (basePrefix.startsWith(pattern) || pattern.startsWith(basePrefix)) {
+      if (basePrefix === pattern) {
         return seriesId;
       }
     }
     
-    // Se não encontrar padrão, usar o prefixo base como série
+    // Se não encontrar padrão exato, usar o prefixo base como série
     return basePrefix || 'unknown';
   }
   

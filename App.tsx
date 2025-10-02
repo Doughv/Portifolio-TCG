@@ -148,17 +148,17 @@ export default function App() {
         <Stack.Screen 
           name="Series" 
           component={SeriesScreen}
-          options={{ title: 'Séries' }}
+          options={{ title: 'Coleções' }}
         />
         <Stack.Screen 
           name="Sets" 
           component={SetsScreen}
-          options={{ title: 'Sets' }}
+          options={{ title: 'Expansões' }}
         />
         <Stack.Screen 
           name="Cards" 
           component={CardsScreen}
-          options={{ title: 'Cards' }}
+          options={{ title: 'Cartas' }}
         />
         <Stack.Screen 
           name="CardDetail" 

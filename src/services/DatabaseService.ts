@@ -470,10 +470,6 @@ class DatabaseService {
       'SELECT * FROM cards ORDER BY name ASC'
     );
     
-    console.log(`🔍 Debug getAllCards: ${result.length} cards encontrados no banco`);
-    if (result.length > 0) {
-      console.log(`🔍 Debug getAllCards: Primeiros 3 IDs:`, result.slice(0, 3).map(r => r.id));
-    }
     
     return result.map((row: any) => ({
       id: row.id as string,

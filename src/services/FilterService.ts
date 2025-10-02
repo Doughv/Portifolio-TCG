@@ -80,10 +80,10 @@ class FilterService {
     try {
       const allSets = await DatabaseService.getSetsBySeries(seriesId);
       
-      // Se não há filtros de expansões selecionados, retornar array vazio (usuário deve escolher)
+      // Se não há filtros de expansões selecionados, retornar todos os sets da série
       if (this.selectedExpansions.length === 0) {
-        console.log('Nenhuma expansão selecionada, retornando array vazio');
-        return [];
+        console.log('Nenhuma expansão selecionada, retornando todos os sets da série');
+        return allSets;
       }
       
       // Retornar apenas os sets selecionados
